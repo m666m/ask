@@ -4,7 +4,7 @@ Text pipe forwarding to Ollama OpenAI-compatible API
 
 安装：
 
-    $ curl -fsSL https://github.com/m666m/ask/raw/master/ask | sudo tee /usr/local/bin/ask
+    $ curl -fsSL https://github.com/m666m/ask/raw/master/ask | sudo tee /usr/local/bin/ask >/dev/null
 
     修改脚本中 MODEL 和 OLLAMA_URL 的值，适配你的环境
 
@@ -30,7 +30,8 @@ Text pipe forwarding to Ollama OpenAI-compatible API
 
 ```conf
 # 绑定 Prefix + Ctrl+e 捕获当前窗格最近100行内容问 AI
-bind-key C-e run-shell "tmux capture-pane -pS -100 | ask; read -p 'press RETURN key to close window...'"
+bind C-e new-window "echo 'ask AI in progress...'; { echo 'Please analyze the following content
+'; tmux capture-pane -p -t '{last}' -S -100; } | ask; echo; read -p 'Press RETURN to close...'"
 ```
 
 2、在 tmux 里，先按先导键 ctrl + b，然后再按 ctrl+e，会新建窗口显示 AI 的回答，按回车键关闭窗口。
