@@ -30,8 +30,7 @@ Text pipe forwarding to Ollama OpenAI-compatible API
 
 ```conf
 # 绑定 Prefix + Ctrl+e 捕获当前窗格最近100行内容问 AI
-bind C-e new-window "echo 'ask AI in progress...'; { echo 'Please analyze the following content
-'; tmux capture-pane -p -t '{last}' -S -100; } | ask; echo; read -p 'Press RETURN to close...'"
+bind C-e new-window "echo 'ask AI in progress...'; { echo 'Please analyze the following content:'; tmux capture-pane -p -t '{last}' -S -100; } | ask; echo; read -p 'Press RETURN to close...'"
 ```
 
 2、在 tmux 里，先按先导键 ctrl + b，然后再按 ctrl+e，会新建窗口显示 AI 的回答，按回车键关闭窗口。
