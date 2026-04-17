@@ -1,2 +1,36 @@
 # ask
+
 Text pipe forwarding to Ollama OpenAI-compatible API
+
+安装：
+
+    $ curl -fsSL https://github.com/m666m/ask/raw/master/ask | sudo tee /usr/local/bin/ask
+
+    修改脚本中 MODEL 和 OLLAMA_URL 的值，适配你的环境
+
+用法:
+
+    # 单行问题
+    $ echo "什么是 Bash 函数？" | ask
+
+    # 多行问题
+    $ cat << EOF | ask
+    请用 Python 写一个快速排序函数，
+    并添加详细注释。
+    EOF
+
+    # 从文件读取问题
+    $ ask < question.txt
+
+高级用法：
+
+把 tmux 屏幕内容发送给 ask 去问 AI，适合查看程序输出或日志等场合，简化你的操作。
+
+1、tmux 热键设置如下：
+
+```conf
+# 绑定 Prefix + Ctrl+e 捕获当前窗格最近100行内容问 AI
+bind-key C-e run-shell "tmux capture-pane -pS -100 | ask; read -p 'press RETURN key to close window...'"
+```
+
+2、在 tmux 里，先按先导键 ctrl + b，然后再按 ctrl+e，会新建窗口显示 AI 的回答，按回车键关闭窗口。

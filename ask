@@ -1,0 +1,65 @@
+#!/bin/bash
+# 纯文本管道转发至 Ollama OpenAI 兼容 API
+#
+# 用法:
+#
+# 单行问题
+# $ echo "什么是 Bash 函数？" | ask
+#
+# 多行问题
+# $ cat << EOF | ask
+# 请用 Python 写一个快速排序函数，
+# 并添加详细注释。
+# EOF
+#
+# 从文件读取问题
+# $ ask < question.txt
+
+# 默认模型，可以根据需要修改为其他 Ollama 支持的模型，如 "gemma4:e2b" 或 "qwen3.5:27b" 等
+MODEL="gemma4:26b"
+# NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
+OLLAMA_URL="${1:-http://localhost:11434/v1/chat/completions}"
+
+USER_PROMPT=$(cat)
+
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq not found" >&2
+    exit 1
+fi
+
+JSON_DATA=$(jq -n \
+    --arg model "$MODEL" \
+    --arg content "$USER_PROMPT" \
+    '{
+        model: $model,
+        messages: [{role: "user", content: $content}],
+        stream: true
+    }')
+
+if command -v curl &>/dev/null; then
+    HTTP_CMD="curl -s -N -X POST \"$OLLAMA_URL\" -H \"Content-Type: application/json\" -d @-"
+elif command -v wget &>/dev/null; then
+    HTTP_CMD="wget -q -O - --no-buffer --header=\"Content-Type: application/json\" --post-data=\"-\" \"$OLLAMA_URL\""
+else
+    echo "Error: curl or wget not found" >&2
+    exit 1
+fi
+
+echo "$JSON_DATA" | eval "$HTTP_CMD" | while IFS= read -r line; do
+    # 跳过空行
+    [[ -z "$line" ]] && continue
+    # 只处理 SSE 数据行
+    if [[ "$line" == data:* ]]; then
+        json_part="${line#data: }"
+        # 忽略结束标记
+        [[ "$json_part" == "[DONE]" ]] && continue
+        # 提取内容，仅当非空时才输出（避免空字符串产生空行）
+        content=$(echo "$json_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
+        if [[ -n "$content" ]]; then
+            printf "%s" "$content"
+        fi
+    fi
+done
+
+# 最后补一个换行，使终端提示符另起一行
+echo
