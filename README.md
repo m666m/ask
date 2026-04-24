@@ -1,6 +1,6 @@
 # ask
 
-Text pipe forwarding to Ollama OpenAI-compatible API
+Conveniently send questions to Ollama or other OpenAI-compatible APIs for analysis directly from the command line.
 
 安装：
 
@@ -10,17 +10,19 @@ Text pipe forwarding to Ollama OpenAI-compatible API
 
 用法:
 
-    # 单行问题
-    $ echo "什么是 Bash 函数？" | ask
+```bash
+# 单行问题
+$ echo "什么是 Bash 函数？" | ask
 
-    # 多行问题
-    $ cat << EOF | ask
-    请用 Python 写一个快速排序函数，
-    并添加详细注释。
-    EOF
+# 多行问题
+$ cat <<- EOF | ask
+请用 Python 写一个快速排序函数，
+并添加详细注释。
+EOF
 
-    # 从文件读取问题
-    $ ask < question.txt
+# 从文件读取问题
+$ ask < question.txt
+```
 
 高级用法：
 
