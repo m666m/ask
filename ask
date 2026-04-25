@@ -17,11 +17,12 @@
 
 set -euo pipefail
 
-# 默认模型，可以根据需要修改为其他 Ollama 支持的模型，如 "gemma4:e2b" 或 "qwen3.5:27b" 等
-MODEL=${1:-"qwen2.5-coder:7b"}
+# 默认模型，可以根据需要修改为其他 Ollama 支持的模型
+MODEL=${1:-"gemma4:26b"}
 # NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
 OLLAMA_URL="http://localhost:11434/v1/chat/completions"
 
+# 输入内容有引号等特殊字符可能会导致解析错误
 USER_PROMPT=$(cat)
 
 if ! command -v jq &>/dev/null; then
@@ -38,16 +39,18 @@ JSON_DATA=$(jq -n \
         stream: true
     }')
 
+# 直接调用 curl 或 wget，不再拼接命令字符串
 if command -v curl &>/dev/null; then
-    HTTP_CMD="curl -s -N -X POST \"$OLLAMA_URL\" -H \"Content-Type: application/json\" -d @-"
+    printf '%s' "$JSON_DATA" | curl -s -N -X POST "$OLLAMA_URL" \
+        -H "Content-Type: application/json" -d @-
 elif command -v wget &>/dev/null; then
-    HTTP_CMD="wget -q -O - --no-buffer --header=\"Content-Type: application/json\" --post-data=\"-\" \"$OLLAMA_URL\""
+    printf '%s' "$JSON_DATA" | wget -q -O - --no-buffer \
+        --header="Content-Type: application/json" \
+        --post-file=- "$OLLAMA_URL"
 else
     echo "Error: curl or wget not found" >&2
     exit 1
-fi
-
-echo "$JSON_DATA" | eval "$HTTP_CMD" | while IFS= read -r line; do
+fi | while IFS= read -r line; do
     # 跳过空行
     [[ -z "$line" ]] && continue
     # 只处理 SSE 数据行
@@ -55,8 +58,8 @@ echo "$JSON_DATA" | eval "$HTTP_CMD" | while IFS= read -r line; do
         json_part="${line#data: }"
         # 忽略结束标记
         [[ "$json_part" == "[DONE]" ]] && continue
-        # 提取内容，仅当非空时才输出（避免空字符串产生空行）
-        content=$(echo "$json_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
+        # 提取内容，忽略解析错误（避免 pipefail 导致脚本退出）
+        content=$(echo "$json_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null || true)
         if [[ -n "$content" ]]; then
             printf "%s" "$content"
         fi
