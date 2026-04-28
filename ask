@@ -24,10 +24,18 @@
 
 set -euo pipefail
 
+# TODO: 加载配置
+# source ~/.config/ask/.env
 # 默认模型，可以根据需要修改为其他 Ollama 支持的模型
 MODEL="${ASK_MODEL:-gemma4:26b}"
 # NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
-OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost.local:11434/v1/chat/completions}"
+OLLAMA_URL="${ASK_OLLAMA_URL:-http://$(hostname).local:11434/v1/chat/completions}"
+
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq not found" >&2
+
+    exit 1
+fi
 
 # ========== 自然语言转命令模式：ask @ ... ==========
 if [[ "${1:-}" == "@" ]]; then
@@ -64,6 +72,7 @@ if [[ "${1:-}" == "@" ]]; then
             --post-file=- "$OLLAMA_URL" | jq -r '.choices[0].message.content')
     else
         echo "Error: curl or wget not found" >&2
+
         exit 1
     fi
 
@@ -77,11 +86,6 @@ fi
 # ========== 管道模式 ==========
 # 输入内容有引号等特殊字符可能会导致解析错误
 USER_PROMPT=$(cat)
-
-if ! command -v jq &>/dev/null; then
-    echo "Error: jq not found" >&2
-    exit 1
-fi
 
 JSON_DATA=$(jq -n \
     --arg model "$MODEL" \
@@ -102,6 +106,7 @@ elif command -v wget &>/dev/null; then
         --post-file=- "$OLLAMA_URL"
 else
     echo "Error: curl or wget not found" >&2
+
     exit 1
 fi | while IFS= read -r line; do
     # 跳过空行

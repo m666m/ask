@@ -1,0 +1,61 @@
+# Bash completion for 'ask' — provides AI‑generated command examples
+# Place this file in /etc/bash_completion.d/ (system-wide) or
+# in ~/.bash_completion.d/ (per-user). It will be sourced automatically.
+
+_ask_completion() {
+    local input="${COMP_LINE#ask }"   # 删除开头的 "ask "
+    [ -z "$input" ] && return
+
+    # TODO: 加载配置
+    # source ~/.config/ask/.env
+    # 使用与 ask 相同的默认配置
+    local MODEL="${ASK_MODEL:-gemma4:26b}"
+    local OLLAMA_URL="${ASK_OLLAMA_URL:-http://$(hostname).local:11434/v1/chat/completions}"
+
+    local system="You are a shell command example generator. Return 3~5 common usage examples of the given command. Format each line exactly as: 1、description：command. No extra text. Use real file/directory names from the context if appropriate."
+    local full_prompt="Current dir: $(pwd), files: $(ls -A | head -20)\nCommand: $input"
+
+    if ! command -v jq &>/dev/null; then
+        return
+    fi
+
+    local json_data
+    json_data=$(jq -n \
+        --arg model "$MODEL" \
+        --arg sys "$system" \
+        --arg usr "$full_prompt" \
+        '{model: $model, messages: [{role:"system",content:$sys},{role:"user",content:$usr}], stream: false}')
+
+    local completions
+    if command -v curl &>/dev/null; then
+        completions=$(printf '%s' "$json_data" | curl -s -X POST "$OLLAMA_URL" \
+            -H "Content-Type: application/json" -d @- | jq -r '.choices[0].message.content' 2>/dev/null)
+    elif command -v wget &>/dev/null; then
+        completions=$(printf '%s' "$json_data" | wget -q -O - --header="Content-Type: application/json" \
+            --post-file=- "$OLLAMA_URL" | jq -r '.choices[0].message.content' 2>/dev/null)
+    else
+        return
+    fi
+
+    [ -z "$completions" ] && return
+
+    local IFS=$'\n'
+    local candidates=()
+    for line in $completions; do
+        [[ -z "$line" ]] && continue
+        # 解析 "1、描述：命令"
+        if [[ "$line" =~ ^[0-9]+、(.+)：(.+)$ ]]; then
+            desc="${BASH_REMATCH[1]}"
+            cmd="${BASH_REMATCH[2]}"
+            cmd=$(echo "$cmd" | xargs)   # 去除首尾空格
+            candidates+=("$(printf "%s\t%s" "$cmd" "$desc")")
+        else
+            # 不是标准格式，直接作为候选
+            candidates+=("$line")
+        fi
+    done
+
+    COMPREPLY=("${candidates[@]}")
+}
+
+complete -F _ask_completion ask
