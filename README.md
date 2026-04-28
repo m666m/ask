@@ -6,11 +6,12 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 
     $ curl -fsSL https://github.com/m666m/ask/raw/master/ask | sudo tee /usr/local/bin/ask >/dev/null
 
-    修改脚本中 MODEL 和 OLLAMA_URL 的值，适配你的环境
+    修改脚本中 MODEL 和 OLLAMA_URL 的值，或设置环境变量 `export ASK_MODEL=xxx` `export ASK_OLLAMA_URL=http:`
 
 用法:
 
 ```bash
+# 1、问问题
 # 单行问题
 $ echo "什么是 Bash 函数？" | ask
 
@@ -22,6 +23,11 @@ EOF
 
 # 从文件读取问题
 $ ask < question.txt
+
+2、自然语言转命令
+$ ask @ find files larger than 100M and sort by size
+find . -type f -size +100M -exec ls -lh {} \; 2>/dev/null | sort -k5 -h
+
 ```
 
 高级用法：
