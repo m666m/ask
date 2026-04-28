@@ -8,7 +8,7 @@ set -euo pipefail
 # 默认模型，可以根据需要修改为其他 Ollama 支持的模型
 MODEL="${ASK_MODEL:-gemma4:26b}"
 # NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
-OLLAMA_URL="${ASK_OLLAMA_URL:-http://$(hostname).local:11434/v1/chat/completions}"
+OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
 if ! command -v jq &>/dev/null; then
     echo "Error: jq not found" >&2
@@ -117,10 +117,12 @@ if [[ "${1:-}" == "@" ]]; then
 fi
 
 # 2. 交互模式：ask 无参数且无管道输入
-# 用户自由输入文字，或粘贴 log，然后按回车键即发送给 AI 进行分析
+# 用户自由输入文字，或粘贴 log，然后按 Ctrl+D 即发送给 AI 进行分析
 if [[ $# -eq 0 ]] && [[ -t 0 ]]; then
-    echo -n "ask> "
-    read -r USER_PROMPT
+    # echo -n "ask> "
+    # read -r USER_PROMPT
+    echo "Enter or paste your question (press Ctrl+D when done):"
+    USER_PROMPT=$(cat)
 
     if [[ -z "$USER_PROMPT" ]]; then
         echo "Empty input, exiting." >&2
@@ -129,6 +131,8 @@ if [[ $# -eq 0 ]] && [[ -t 0 ]]; then
     fi
 
     ask_stream "$USER_PROMPT"
+
+    exit 0
 fi
 
 # 3. 管道模式：从 stdin 读取

@@ -34,12 +34,12 @@ EOF
 
 ## 使用方法
 
-### 交互模式使用
+### 交互模式，任意输入问题
 
     $ ask
-    分析如下问题： <paste your log>
+    分析下： <paste your log>
 
-输入回车后，会把内容发送给 AI，并显示 AI 的回复。
+输入 Ctrl+D 后，会把内容发送给 AI，并显示 AI 的回复。
 
 ### 管道传送你的问题给 ask
 
@@ -55,6 +55,8 @@ EOF
     # 从文件读取问题
     $ ask < question.txt
 
+适合从别的输出接收信息，然后发送给 AI 进行分析的场景。
+
 ### 自然语言转 shell 命令
 
 ask 后跟随 @ 符号，然后输入你的问题，会转化成 shell 命令
@@ -62,9 +64,11 @@ ask 后跟随 @ 符号，然后输入你的问题，会转化成 shell 命令
     $ ask @ find files larger than 100M and sort by size
     find . -type f -size +100M -exec ls -lh {} \; 2>/dev/null | sort -k5 -h
 
+适合哪个想不起来命令用法的场景。
+
 ### Bash 命令自动完成
 
-ask 自动提示可用的命令参数。
+ask 自动提示可用的命令参数，适合想不起来命令参数的场景
 
     打开一个支持补全的 Bash 终端。
 
