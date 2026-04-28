@@ -6,8 +6,6 @@ _ask_completion() {
     local input="${COMP_LINE#ask }"   # 删除开头的 "ask "
     [ -z "$input" ] && return
 
-    # TODO: 加载配置
-    # source ~/.config/ask/.env
     # 使用与 ask 相同的默认配置
     local MODEL="${ASK_MODEL:-gemma4:26b}"
     local OLLAMA_URL="${ASK_OLLAMA_URL:-http://$(hostname).local:11434/v1/chat/completions}"

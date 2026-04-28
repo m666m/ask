@@ -3,8 +3,6 @@
 
 set -euo pipefail
 
-# TODO: 加载配置
-# source ~/.config/ask/.env
 # 默认模型，可以根据需要修改为其他 Ollama 支持的模型
 MODEL="${ASK_MODEL:-gemma4:26b}"
 # NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址

@@ -16,21 +16,7 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 
     $ curl -fsSL https://github.com/m666m/ask/raw/main/completions/ask | sudo tee /usr/share/bash-completion/completions/ask >/dev/null
 
-2.修改脚本中 MODEL 和 OLLAMA_URL 的值
-
-TODO: 设置环境变量文件
-
-    $ mkdir -p $HOME/.config/ask
-
-    $ touch $HOME/.config/ask/.env && chmod 600 $HOME/.config/ask/.env
-
-```bash
-cat > ~/.config/ask/.env << 'EOF'
-ASK_MODEL=gemma4:26b
-ASK_OLLAMA_URL=http://localhost:11434/v1/chat/completions
-ASK_OLLAMA_API=your_api_key
-EOF
-```
+2.修改脚本中 MODEL 和 OLLAMA_URL 的值，改为你自己的本地 AI 供应商的值
 
 ## 使用方法
 
