@@ -83,6 +83,49 @@ if [[ "${1:-}" == "@" ]]; then
     exit 0
 fi
 
+# ========== 交互模式：直接输入 ask 时进入 ==========
+if [[ $# -eq 0 ]] && [[ -t 0 ]]; then
+    echo -n "ask> "
+    read -r USER_PROMPT
+
+    if [[ -z "$USER_PROMPT" ]]; then
+        echo "Empty input, exiting." >&2
+        exit 1
+    fi
+
+    # 直接构造请求并输出
+    JSON_DATA=$(jq -n \
+        --arg model "$MODEL" \
+        --arg content "$USER_PROMPT" \
+        '{
+            model: $model,
+            messages: [{role: "user", content: $content}],
+            stream: true
+        }')
+
+    if command -v curl &>/dev/null; then
+        printf '%s' "$JSON_DATA" | curl -s -N -X POST "$OLLAMA_URL" \
+            -H "Content-Type: application/json" -d @-
+    elif command -v wget &>/dev/null; then
+        printf '%s' "$JSON_DATA" | wget -q -O - --no-buffer \
+            --header="Content-Type: application/json" \
+            --post-file=- "$OLLAMA_URL"
+    fi | while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        if [[ "$line" == data:* ]]; then
+            json_part="${line#data: }"
+            [[ "$json_part" == "[DONE]" ]] && continue
+            content=$(echo "$json_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null || true)
+            if [[ -n "$content" ]]; then
+                printf "%s" "$content"
+            fi
+        fi
+    done
+
+    echo
+    exit 0
+fi
+
 # ========== 管道模式 ==========
 # 输入内容有引号等特殊字符可能会导致解析错误
 USER_PROMPT=$(cat)
