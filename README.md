@@ -6,7 +6,7 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 
     本地运行了大模型如 ollama/LM Studio，或其它 OpenAI 兼容格式的 AI 供应商账户
 
-    本地操作系统已经安装了软件包 jq， curl/wget, bash-completion
+    本地操作系统已经安装了软件包 jq, curl/wget, bash-completion
 
 ## 安装方法
 
