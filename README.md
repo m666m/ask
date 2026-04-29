@@ -23,6 +23,7 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 ### 交互模式，任意输入问题
 
     $ ask
+    Enter or paste your question (press Ctrl+D when done):
     分析下： <paste your log>
 
 输入 Ctrl+D 后，会把内容发送给 AI，并显示 AI 的回复。
@@ -37,7 +38,7 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
     分析下
     $ df -h
     Filesystem            Size  Used Avail Use% Mounted on
-    C:/Program Files/Git  1.9T  1882G  4G  99% /
+    C:/Program Files/Git  1.9T  1899G  2G  99.99% /
     EOF
 
     # 从文件读取
@@ -51,6 +52,9 @@ ask 后跟随 @ 符号，然后输入你的问题，会转化成 shell 命令
 
     $ ask @ find files larger than 100M and sort by size
     find . -type f -size +100M -exec ls -lh {} \; 2>/dev/null | sort -k5 -h
+
+    $ ask @ iostat 分析磁盘io及利用率
+    iostat -xz 1
 
 适合哪个想不起来命令用法的场景。
 
