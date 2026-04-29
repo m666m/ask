@@ -44,11 +44,11 @@ ask_nonstream() {
         }')
 
     if command -v curl &>/dev/null; then
-        printf '%s' "$json_data" | curl -s -X POST "$OLLAMA_URL" \
-            -H "Content-Type: application/json" -d @- | jq -r '.choices[0].message.content'
+        printf '%s' "$json_data" | curl -s --connect-timeout 5 --max-time 30 -X POST "$OLLAMA_URL" \
+            -H "Content-Type: application/json" -d @- | jq -r '.choices[0].message.content // empty'
     elif command -v wget &>/dev/null; then
-        printf '%s' "$json_data" | wget -q -O - --header="Content-Type: application/json" \
-            --post-file=- "$OLLAMA_URL" | jq -r '.choices[0].message.content'
+        printf '%s' "$json_data" | wget -q --timeout=30 -O - --header="Content-Type: application/json" \
+            --post-file=- "$OLLAMA_URL" | jq -r '.choices[0].message.content // empty'
     fi
 }
 
@@ -70,10 +70,10 @@ ask_stream() {
         }')
 
     if command -v curl &>/dev/null; then
-        printf '%s' "$json_data" | curl -s -N -X POST "$OLLAMA_URL" \
+        printf '%s' "$json_data" | curl -s --connect-timeout 5 --max-time 120 -N -X POST "$OLLAMA_URL" \
             -H "Content-Type: application/json" -d @-
     elif command -v wget &>/dev/null; then
-        printf '%s' "$json_data" | wget -q -O - --no-buffer \
+        printf '%s' "$json_data" | wget -q --timeout=120 -O - --no-buffer \
             --header="Content-Type: application/json" \
             --post-file=- "$OLLAMA_URL"
     fi | while IFS= read -r line; do
@@ -115,11 +115,10 @@ if [[ "${1:-}" == @* ]]; then
     "You are a translator from natural language to a single shell command."
     "Return ONLY the exact command, no explanation, no markdown."
     "If there are multiple possible commands, choose the most common and safe one."
-    "If there are no precise parameters, provide the most commonly used usage."
     )
-    system=$(IFS=" "; echo "${system_parts[*]}")
+    system=$(printf '%s\n' "${system_parts[@]}")
 
-    user="Context: os:$(uname -a), current directory $(pwd), files: $(ls -A | head -20)\nRequest: $natural_query"
+    user="Context: os:$(uname -s), current directory $(pwd), files: $(ls -A | head -20 | tr '\n' ' ')\nRequest: $natural_query"
 
     cmd=$(ask_nonstream "$system" "$user")
     # 清理并打印
