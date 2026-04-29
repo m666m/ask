@@ -10,7 +10,7 @@ _ask_completion() {
     local input="${COMP_LINE#ask }"
     [[ -z "$input" ]] && return
 
-    local MODEL="${ASK_MODEL:-gemma4:26b}"
+    local MODEL="${ASK_MODEL:-llama3.1:8b}"
     local OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
     command -v jq &>/dev/null || return

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # ---------- 配置 ----------
-MODEL="${ASK_MODEL:-gemma4:26b}"
+MODEL="${ASK_MODEL:-llama3.1:8b}"
 # NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
 OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
