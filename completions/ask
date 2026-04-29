@@ -1,5 +1,5 @@
 # Bash completion for 'ask' — provides AI‑generated command examples
-# Place this file in /etc/bash_completion.d/ (system-wide) or
+# Place this file in /usr/share/bash-completion/completions/ (system-wide) or
 # in ~/.bash_completion.d/ (per-user). It will be sourced automatically.
 # 调试：
 #   $ complete -p ask

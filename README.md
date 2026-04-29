@@ -70,17 +70,19 @@ ask 自动提示可用的命令参数，适合想不起来命令参数的场景
 
     打开一个支持补全的 Bash 终端。
 
-示例：输入 `ask tar ` 然后按 Tab 键，稍后。
+示例：输入 `ask tar` 然后按 Tab 键，稍侯。
 
-    终端显示候选菜单，例如：
+    终端显示推荐命令清单，例如：
 
         tar czf archive.tar.gz file1 file2    (描述：压缩文件)
         tar xf archive.tar.gz                 (描述：解压缩文件)
         tar czvf archive.tar.gz /path/to/dir   (描述：压缩目录并显示过程)
 
-    使用方向键选择其中一个，回车后命令行被替换为完整命令（如 tar czf archive.tar.gz file1 file2），可再按回车执行。
+        --- Press Ctrl+C to get a clean prompt ---
 
-示例：输入 `ask find ` 然后 Tab，应显示 find 的常用示例。
+    按 Ctrl+C 退出提示即可。
+
+示例：输入 `ask find` 然后 Tab，应显示 find 的常用示例。
 
 ## 高级用法
 
