@@ -51,7 +51,7 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 适合从别的输出接收信息，然后发送给 AI 进行分析的场景，参见 [把 tmux 面板内容发送给 AI]
 
     # 单行问题
-    $ echo "Linux 磁盘分区用什么工具" | ask
+    $ echo "iostat -xz 1 什么意思" | ask
 
     # 多行输入，可粘贴
     $ cat <<- EOF | ask
@@ -70,7 +70,7 @@ ask 自动提示可用的命令参数，适合想不起来命令参数的场景
 
     打开一个支持补全的 Bash 终端。
 
-示例：输入 `ask tar ` 然后按 Tab 键两次。
+示例：输入 `ask tar ` 然后按 Tab 键，稍后。
 
     终端显示候选菜单，例如：
 
