@@ -4,7 +4,6 @@
 set -euo pipefail
 
 # ---------- 配置 ----------
-# 默认模型，可以根据需要修改为其他 Ollama 支持的模型
 MODEL="${ASK_MODEL:-gemma4:26b}"
 # NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
 OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
@@ -14,7 +13,6 @@ if ! command -v jq &>/dev/null; then
     echo "Error: jq not found" >&2
     exit 1
 fi
-
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     echo "Error: curl or wget not found" >&2
     exit 1
@@ -27,7 +25,6 @@ fi
 ask_nonstream() {
     local system="$1"
     local user="$2"
-
     local json_data
 
     # 输入内容有引号等特殊字符可能会导致解析错误
@@ -54,11 +51,10 @@ ask_nonstream() {
 }
 
 # 流式请求：发送 prompt，流式输出回答
-# 用于管道模式和交互模式
+# 用于参数模式、交互模式、管道模式
 ask_stream() {
     local system="$1"
     local user="$2"
-
     local json_data
 
     # 输入内容有引号等特殊字符可能会导致解析错误
@@ -91,85 +87,71 @@ ask_stream() {
             [[ -n "$content" ]] && printf "%s" "$content"
         fi
     done
-
     echo
 }
 
-# ---------- 模式分支 ----------
+# ---------- 通用提示词 ----------
 
-# 1. @ 模式：把自然语言翻译成 shell 命令（非流式）
-# 用户输入 `ask @ 自然语言`，AI 翻译成 shell 命令
-if [[ "${1:-}" == @* ]]; then
-    natural_query="${1#@}"      # 去掉开头的 @
-    shift
+# 用于 @ 模式的系统提示词（要求只返回 shell 命令）
+sys_cmd_parts=(
+    'You are a translator from natural language to a single shell command.'
+    'Return ONLY the exact command, no explanation, no markdown.'
+    'If there are multiple possible commands, choose the most common and safe one.'
+)
+SYSTEM_CMD=$(printf '%s\n' "${sys_cmd_parts[@]}")
 
-    # 拼接剩余参数（如果有）
-    if [[ $# -gt 0 ]]; then
-        natural_query="$natural_query $*"
-    fi
-
-    # 去除首尾空格
-    natural_query="$(echo "$natural_query" | xargs)"
-
-    if [[ -z "$natural_query" ]]; then
-        echo "Usage: ask @ <natural language request>" >&2
-
-        exit 1
-    fi
-
-    # 系统提示词：要求只返回 shell 命令
-    system_parts=(
-        'You are a translator from natural language to a single shell command.'
-        'Return ONLY the exact command, no explanation, no markdown.'
-        'If there are multiple possible commands, choose the most common and safe one.'
-    )
-    system=$(printf '%s\n' "${system_parts[@]}")
-
-    # 提供简单的信息：操作系统、当前目录、文件列表（压缩显示）
-    os_name=$(uname -s)
-    files=$(ls -A | head -20 | tr '\n' ' ')
-    user="Context: os: $os_name, pwd: $(pwd), files: $files\nRequest: $natural_query"
-
-    cmd=$(ask_nonstream "$system" "$user")
-    # 清理并打印
-    cmd=$(echo "$cmd" | grep -v '^\s*#' | head -1)
-    printf '%s\n' "$cmd"
-
-    exit 0
-fi
-
-# 用于下面 交互模式和管道模式的系统提示词
-system_parts=(
+# 用于普通对话的系统提示词（无 markdown，适合终端）
+sys_chat_parts=(
     'You are a helpful terminal assistant.'
     'Answer concisely.'
     'Do NOT use markdown formatting (no **bold**, no `code fences`, no bullet lists with - or *).'
     'Use plain text and separate sections with blank lines when necessary.'
 )
+SYSTEM_CHAT=$(printf '%s\n' "${sys_chat_parts[@]}")
 
-SYSTEM_PROMPT=$(printf '%s\n' "${system_parts[@]}")
+# ---------- 模式分支 ----------
 
-# 2. 交互模式：ask 无参数且无管道输入（终端交互）
-# 用户自由输入文字，或粘贴 log，然后按 Ctrl+D 即发送给 AI 进行分析
-
-if [[ $# -eq 0 ]] && [[ -t 0 ]]; then
-    # echo -n "ask> "
-    # read -r USER_PROMPT
-    echo "Enter or paste your question (press Ctrl+D when done):"
-
-    USER_PROMPT=$(cat)
-
-    if [[ -z "$USER_PROMPT" ]]; then
-        echo "Empty input, exiting." >&2
-
+# 1. @ 模式：把自然语言翻译成 shell 命令，非流式对话
+# 用户输入 `ask @ 自然语言`，AI 翻译成 shell 命令
+if [[ "${1:-}" == @* ]]; then
+    natural_query="${1#@}"
+    shift
+    [[ $# -gt 0 ]] && natural_query="$natural_query $*"
+    natural_query="$(echo "$natural_query" | xargs)"
+    if [[ -z "$natural_query" ]]; then
+        echo "Usage: ask @ <natural language request>" >&2
         exit 1
     fi
+    # 提供简单的信息：操作系统、当前目录、文件列表（压缩显示）
+    os_name=$(uname -s)
+    files=$(ls -A | head -20 | tr '\n' ' ')
+    user="OS: $os_name, Current dir: $(pwd), files: $files\nRequest: $natural_query"
 
-    ask_stream "$SYSTEM_PROMPT" "$USER_PROMPT"
-
+    cmd=$(ask_nonstream "$SYSTEM_CMD" "$user")
+    cmd=$(echo "$cmd" | grep -v '^\s*#' | head -1)
+    printf '%s\n' "$cmd"
     exit 0
 fi
 
-# 3. 管道模式：从 stdin 读取
-USER_PROMPT=$(cat)
+# 2. 参数模式：ask 后直接跟问题，流式对话
+if [[ $# -gt 0 ]]; then
+    query="$*"
+    ask_stream "$SYSTEM_CHAT" "$query"
+    exit 0
+fi
 
-ask_stream "$SYSTEM_PROMPT" "$USER_PROMPT"
+# 3. 交互模式：无参数且终端输入（多行输入，Ctrl+D 结束），流式对话
+if [[ -t 0 ]]; then
+    echo "Enter or paste your question (press Ctrl+D when done):"
+    USER_PROMPT=$(cat)
+    if [[ -z "$USER_PROMPT" ]]; then
+        echo "Empty input, exiting." >&2
+        exit 1
+    fi
+    ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"
+    exit 0
+fi
+
+# 4. 管道模式：从 stdin 读取，流式对话
+USER_PROMPT=$(cat)
+ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"

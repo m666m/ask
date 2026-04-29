@@ -12,7 +12,7 @@ _ask_completion() {
 
     local system="You are a shell command example generator. Return 3~5 common usage examples of the given command. Format each line exactly as: 1、description：command. No extra text."
     local files=$(ls -A | head -20 | tr '\n' ' ')
-    local full_prompt="Current dir: $(pwd), files: $files\nCommand: $input"
+    local full_prompt="OS: $(uname -s),Current dir: $(pwd), files: $files\nCommand: $input"
 
     if ! command -v jq &>/dev/null; then
         return
