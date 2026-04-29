@@ -8,7 +8,7 @@ _ask_completion() {
 
     # 使用与 ask 相同的默认配置
     local MODEL="${ASK_MODEL:-gemma4:26b}"
-    local OLLAMA_URL="${ASK_OLLAMA_URL:-http://$(hostname).local:11434/v1/chat/completions}"
+    local OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
     local system="You are a shell command example generator. Return 3~5 common usage examples of the given command. Format each line exactly as: 1、description：command. No extra text. Use real file/directory names from the context if appropriate."
     local full_prompt="Current dir: $(pwd), files: $(ls -A | head -20)\nCommand: $input"

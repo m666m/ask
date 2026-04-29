@@ -30,16 +30,18 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 ### 管道传送你的问题给 ask
 
     # 单行问题
-    $ echo "给我几个 shell 命令 test 的示例" | ask
+    $ echo "Linux 磁盘分区用什么工具" | ask
 
-    # 多行问题
+    # 多行输入，可粘贴
     $ cat <<- EOF | ask
-    请用 Python 写一个快速排序函数，
-    并添加详细注释。
+    分析下
+    $ df -h
+    Filesystem            Size  Used Avail Use% Mounted on
+    C:/Program Files/Git  1.9T  1882G  4G  99% /
     EOF
 
-    # 从文件读取问题
-    $ ask < question.txt
+    # 从文件读取
+    $ ask < err_log.txt
 
 适合从别的输出接收信息，然后发送给 AI 进行分析的场景。
 
