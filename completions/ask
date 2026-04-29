@@ -10,8 +10,18 @@ _ask_completion() {
     local input="${COMP_LINE#ask }"
     [[ -z "$input" ]] && return
 
-    local MODEL="${ASK_MODEL:-llama3.1:8b}"
-    local OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
+    local ai_model ai_url
+    ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
+    ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
+
+    # 决定使用本地还是 API，优先连接外部服务
+    if [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+        ai_model="$ASK_API_MODEL"
+        ai_url="$ASK_API_URL"
+    else
+        ai_model="$ASK_MODEL"
+        ai_url="$ASK_OLLAMA_URL"
+    fi
 
     command -v jq &>/dev/null || return
     command -v curl &>/dev/null || return
@@ -19,13 +29,22 @@ _ask_completion() {
     # 构建上下文
     local files
     files=$(ls -A 2>/dev/null | head -20 | tr '\n' ' ')
-    local system="You are a shell command example generator. Return 3~5 common usage examples of the given command. Format each line exactly as: 参数 (描述). No extra text."
+
+    local sys_chat_parts system
+    sys_chat_parts=(
+        'You are a shell command example generator.'
+        'Return 3~5 common usage examples of the given command.'
+        'Format each line exactly as: parameter (description). '
+        'No extra text.'
+    )
+    system=$(printf '%s\n' "${sys_chat_parts[@]}")
+
     local full_prompt="OS: $(uname -s), pwd: $(pwd), files: $files\nPartial command: $input"
 
     # 调用 Ollama API
     local json_data
     json_data=$(jq -n \
-        --arg model "$MODEL" \
+        --arg model "$ai_model" \
         --arg sys "$system" \
         --arg usr "$full_prompt" \
         '{
@@ -39,8 +58,10 @@ _ask_completion() {
 
     local output
     output=$(printf '%s' "$json_data" | \
-        curl -s --connect-timeout 3 --max-time 8 -X POST "$OLLAMA_URL" \
-        -H "Content-Type: application/json" -d @- 2>/dev/null | \
+        curl -s --connect-timeout 3 --max-time 8 -X POST "$ai_url" \
+        -H "Content-Type: application/json" \
+        ${ASK_API_KEY:+-H "Authorization: Bearer $ASK_API_KEY"} \
+        -d @- 2>/dev/null | \
         jq -r '.choices[0].message.content // empty' 2>/dev/null)
 
     [[ -z "$output" ]] && return

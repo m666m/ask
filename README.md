@@ -1,6 +1,6 @@
 # ask
 
-Conveniently send questions to Ollama or other OpenAI-compatible APIs for analysis directly from the command line.
+纯 Shell 打造的轻量终端 AI 助手，无缝切换本地 Ollama 或远程 API，直接提问、生成命令、分析日志，开箱即用。
 
 ## 前提
 
@@ -10,13 +10,58 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 
 ## 安装方法
 
-1.下载 ask 命令脚本和自动完成脚本
+1.下载 ask 命令脚本和自动完成脚本到本地的相关目录，并设置权限
 
     $ curl -fsSL https://github.com/m666m/ask/raw/main/ask | sudo tee /usr/local/bin/ask >/dev/null; sudo chmod 755 /usr/local/bin/ask
 
     $ curl -fsSL https://github.com/m666m/ask/raw/main/completions/ask | sudo tee /usr/share/bash-completion/completions/ask >/dev/null
 
 2.修改脚本中 MODEL 和 OLLAMA_URL 的值，改为你自己的本地 AI 供应商的值
+
+## 设置 API Key 以使用外部 OpenAI 兼容服务
+
+ask 默认连接本地 Ollama，无需 API Key。
+
+若需要使用需要 API Key 的外部服务（如 OpenAI、其他兼容 API），可通过环境变量切换。
+
+### 1. 创建配置文件
+
+建议在 `~/.local/ask/` 下创建 `ask.env`（或其他路径）：
+
+```bash
+mkdir -p ~/.config/ask
+touch ~/.config/ask/ask.env
+```
+
+写入以下内容，并替换为你的实际值：
+
+```bash
+# export ASK_MODEL="llama3.1:8b"
+# export ASK_OLLAMA_URL="http://localhost:11434/v1/chat/completions"
+# 如果环境变量都存在，则 ASK_API_ 系列生效，优先连接外部服务
+export ASK_API_KEY="sk-your-key-here"
+export ASK_API_URL="https://api.openai.com/v1/chat/completions"
+export ASK_API_MODEL="gpt-4o"
+
+```
+
+### 2. 每次使用前手动加载（推荐，安全）
+
+    $ source ~/.config/ask/ask.env
+
+或者将其加入 ~/.bashrc 自动加载：
+
+    $ [ -f ~/.config/ask/ask.env ] && source ~/.config/ask/ask.env
+
+### 3. 使用
+
+加载环境变量后，ask 的所有模式（参数模式、交互模式、管道、@ 命令）都会自动使用 API 服务和 Key。
+
+取消或切换回本地 Ollama，只需清除这三个变量：
+
+    $ unset ASK_API_KEY ASK_API_URL ASK_API_MODEL
+
+之后 ask 仍照常连接本地服务。
 
 ## 使用方法
 
@@ -26,7 +71,7 @@ Conveniently send questions to Ollama or other OpenAI-compatible APIs for analys
 
 ### 交互模式，输入多行内容提问
 
-适合复制命令行的错误输出，粘贴给 AI 进行分析的场景
+适合复制命令的错误输出，粘贴给 AI 进行分析的场景
 
     $ ask
     Enter or paste your question (press Ctrl+D when done):
@@ -70,19 +115,17 @@ ask 自动提示可用的命令参数，适合想不起来命令参数的场景
 
     打开一个支持补全的 Bash 终端。
 
-示例：输入 `ask tar` 然后按 Tab 键，稍侯。
+示例：输入 `ask tar` 然后按 Tab 键，稍侯会显示推荐命令清单，如：
 
-    终端显示推荐命令清单，例如：
+    tar czf archive.tar.gz file1 file2    (描述：压缩文件)
+    tar xf archive.tar.gz                 (描述：解压缩文件)
+    tar czvf archive.tar.gz /path/to/dir   (描述：压缩目录并显示过程)
 
-        tar czf archive.tar.gz file1 file2    (描述：压缩文件)
-        tar xf archive.tar.gz                 (描述：解压缩文件)
-        tar czvf archive.tar.gz /path/to/dir   (描述：压缩目录并显示过程)
+    --- Press Ctrl+C to get a clean prompt ---
 
-        --- Press Ctrl+C to get a clean prompt ---
+按 Ctrl+C 退出提示即可。
 
-    按 Ctrl+C 退出提示即可。
-
-示例：输入 `ask find` 然后 Tab，应显示 find 的常用示例。
+示例：输入 `ask find` 然后按 Tab 键，稍侯会显示 find 的常用示例。
 
 ## 高级用法
 

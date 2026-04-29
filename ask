@@ -4,9 +4,18 @@
 set -euo pipefail
 
 # ---------- 配置 ----------
-MODEL="${ASK_MODEL:-llama3.1:8b}"
-# NOTE: wsl 内访问宿主机 ollama 不能用 localhost，而是 172.21.16.1 这样的地址
-OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
+# 本地变量（向后兼容）
+ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
+ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
+
+# 决定使用本地还是 API，优先连接外部服务
+if [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+    ai_model="$ASK_API_MODEL"
+    ai_url="$ASK_API_URL"
+else
+    ai_model="$ASK_MODEL"
+    ai_url="$ASK_OLLAMA_URL"
+fi
 
 # ---------- 预检 ----------
 if ! command -v jq &>/dev/null; then
@@ -29,7 +38,7 @@ ask_nonstream() {
 
     # 输入内容有引号等特殊字符可能会导致解析错误
     json_data=$(jq -n \
-        --arg model "$MODEL" \
+        --arg model "$ai_model" \
         --arg sys "$system" \
         --arg usr "$user" \
         '{
@@ -42,11 +51,14 @@ ask_nonstream() {
         }')
 
     if command -v curl &>/dev/null; then
-        printf '%s' "$json_data" | curl -s --connect-timeout 5 --max-time 30 -X POST "$OLLAMA_URL" \
-            -H "Content-Type: application/json" -d @- | jq -r '.choices[0].message.content // empty'
+        printf '%s' "$json_data" | curl -s --connect-timeout 5 --max-time 30 -X POST "$ai_url" \
+            -H "Content-Type: application/json" \
+            ${ASK_API_KEY:+-H "Authorization: Bearer $ASK_API_KEY"} \
+            -d @- | jq -r '.choices[0].message.content // empty'
     elif command -v wget &>/dev/null; then
         printf '%s' "$json_data" | wget -q --timeout=30 -O - --header="Content-Type: application/json" \
-            --post-file=- "$OLLAMA_URL" | jq -r '.choices[0].message.content // empty'
+            ${ASK_API_KEY:+--header="Authorization: Bearer $ASK_API_KEY"} \
+            --post-file=- "$ai_url" | jq -r '.choices[0].message.content // empty'
     fi
 }
 
@@ -59,7 +71,7 @@ ask_stream() {
 
     # 输入内容有引号等特殊字符可能会导致解析错误
     json_data=$(jq -n \
-        --arg model "$MODEL" \
+        --arg model "$ai_model" \
         --arg sys "$system" \
         --arg usr "$user" \
         '{
@@ -72,12 +84,15 @@ ask_stream() {
         }')
 
     if command -v curl &>/dev/null; then
-        printf '%s' "$json_data" | curl -s --connect-timeout 5 --max-time 120 -N -X POST "$OLLAMA_URL" \
-            -H "Content-Type: application/json" -d @-
+        printf '%s' "$json_data" | curl -s --connect-timeout 5 --max-time 120 -N -X POST "$ai_url" \
+            -H "Content-Type: application/json" \
+            ${ASK_API_KEY:+-H "Authorization: Bearer $ASK_API_KEY"} \
+            -d @-
     elif command -v wget &>/dev/null; then
         printf '%s' "$json_data" | wget -q --timeout=120 -O - --no-buffer \
             --header="Content-Type: application/json" \
-            --post-file=- "$OLLAMA_URL"
+            ${ASK_API_KEY:+--header="Authorization: Bearer $ASK_API_KEY"} \
+            --post-file=- "$ai_url"
     fi | while IFS= read -r line; do
         [[ -z "$line" ]] && continue
         if [[ "$line" == data:* ]]; then
