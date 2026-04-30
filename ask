@@ -110,17 +110,19 @@ ask_stream() {
 # 用于 @ 模式的系统提示词（要求只返回 shell 命令）
 sys_cmd_parts=(
     'You are a translator from natural language to a single shell command.'
-    'Return ONLY the exact command, no explanation, no markdown.'
+    'Return ONLY the exact command, no explanation, no markdown, no code fences, no backticks.'
     'If there are multiple possible commands, choose the most common and safe one.'
+    'Keep the command practical and ready to execute in the given OS and directory context.'
 )
 SYSTEM_CMD=$(printf '%s\n' "${sys_cmd_parts[@]}")
 
-# 用于普通对话的系统提示词（无 markdown，适合终端）
+# 用于普通对话的系统提示词（无 markdown，适合终端，自适应语言）
 sys_chat_parts=(
-    'You are a helpful terminal assistant.'
-    'Answer concisely.'
-    'Do NOT use markdown formatting (no **bold**, no `code fences`, no bullet lists with - or *).'
-    'Use plain text and separate sections with blank lines when necessary.'
+    'You are a helpful terminal assistant. Answer concisely.'
+    "Respond in the language indicated by the user's LANG environment variable."
+    'Do NOT use markdown formatting: no **bold**, no *italic*, no `code fences`, no ```blocks```, no bullet lists with - or *, no numbered lists.'
+    'Use plain text only. Separate sections with blank lines when necessary.'
+    'For code or commands, just write them as plain text without any formatting.'
 )
 SYSTEM_CHAT=$(printf '%s\n' "${sys_chat_parts[@]}")
 
@@ -153,6 +155,7 @@ fi
 # 2. 参数模式：ask 后直接跟问题，流式对话
 if [[ $# -gt 0 ]]; then
     query="$*"
+    query="LANG: ${LANG:-en}\n$query"
     ask_stream "$SYSTEM_CHAT" "$query"
     exit 0
 fi
@@ -165,10 +168,12 @@ if [[ -t 0 ]]; then
         echo "Empty input, exiting." >&2
         exit 1
     fi
+    USER_PROMPT="LANG: ${LANG:-en}\n$USER_PROMPT"
     ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"
     exit 0
 fi
 
 # 4. 管道模式：从 stdin 读取，流式对话
 USER_PROMPT=$(cat)
+USER_PROMPT="LANG: ${LANG:-en}\n$USER_PROMPT"
 ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"

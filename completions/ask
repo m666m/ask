@@ -29,7 +29,7 @@ _ask_completion() {
     command -v jq &>/dev/null || return
     command -v curl &>/dev/null || return
 
-    # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分）
+    # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分），自适应当前语言
     local files
     files=$(ls -A 2>/dev/null | head -20 | tr '\n' ' ')
 
