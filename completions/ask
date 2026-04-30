@@ -1,6 +1,7 @@
 # Bash completion for 'ask' — provides AI‑generated command examples
 # Place this file in /usr/share/bash-completion/completions/ (system-wide) or
 # in ~/.bash_completion.d/ (per-user). It will be sourced automatically.
+#
 # 调试：
 #   $ complete -p ask
 #   $ COMP_LINE="ask tar" _ask_completion
@@ -11,6 +12,8 @@ _ask_completion() {
     [[ -z "$input" ]] && return
 
     local ai_model ai_url
+
+    # 配置模型及服务地址
     ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
     ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
@@ -26,20 +29,24 @@ _ask_completion() {
     command -v jq &>/dev/null || return
     command -v curl &>/dev/null || return
 
-    # 构建上下文
+    # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分）
     local files
     files=$(ls -A 2>/dev/null | head -20 | tr '\n' ' ')
 
     local sys_chat_parts system
     sys_chat_parts=(
-        'You are a shell command example generator.'
-        'Return 3~5 common usage examples of the given command.'
-        'Format each line exactly as: parameter (description). '
-        'No extra text.'
+        "You are a shell command example generator."
+        "Return exactly 5 common usage examples of the given command."
+        "Each example on its own line."
+        "Format each line exactly as: command_and_args (brief description in ${LANG:-en} language)."
+        "Keep the description under 40 characters."
+        "Do NOT use markdown, code blocks, bullet points, or numbered lists."
+        "Do NOT add any text before or after the list."
+        "Each line must be a single complete line without line breaks."
     )
     system=$(printf '%s\n' "${sys_chat_parts[@]}")
 
-    local full_prompt="OS: $(uname -s), pwd: $(pwd), files: $files\nPartial command: $input"
+    local full_prompt="OS: $(uname -s), pwd: $(pwd), files: $files\nPartial command: $input\nReturn exactly 5 usage examples in the format: command_and_args"
 
     # 调用 Ollama API
     local json_data
@@ -66,18 +73,16 @@ _ask_completion() {
 
     [[ -z "$output" ]] && return
 
-    # 打印建议列表到 stderr
-    echo "" >&2
-    while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
-        printf '  %s\n' "$line" >&2
-    done <<< "$output"
+    # 按换行符拆分成数组
+    mapfile -t suggestions <<< "$output"
 
-    # 提示用户如何退出（按 Ctrl+C 获得干净提示符）
-    printf '\n  \033[1;33m--- Press Ctrl+C to get a clean prompt ---\033[0m\n' >&2
+    # 过滤空行
+    filtered=()
+    for line in "${suggestions[@]}"; do
+        [[ -n "$line" ]] && filtered+=("$line")
+    done
 
-    # 不提供任何补全词
-    COMPREPLY=()
+    COMPREPLY=("#--- AI prompt ---#" "${filtered[@]}")
 }
 
 complete -F _ask_completion ask

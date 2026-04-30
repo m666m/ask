@@ -1,6 +1,6 @@
 # ask
 
-纯 Shell 打造的轻量终端 AI 助手，无缝切换本地 Ollama 或远程 API，直接提问、生成命令、分析日志，开箱即用。
+命令行 AI 助手 — 提问、把你说的话转成 Shell 命令、自动推荐命令补全、分析日志。轻量、纯 Shell 实现，支持本地 Ollama 或任意 OpenAI 兼容 API。
 
 ## 前提
 
@@ -111,21 +111,20 @@ export ASK_API_MODEL="gpt-4o"
 
 ### Bash 命令自动完成
 
-ask 自动提示可用的命令参数，适合想不起来命令参数的场景
+ask 可借助 bash-completion 系统软件包的功能，自动提示可用的命令用法，适合想不起来命令参数的场景
 
-    打开一个支持补全的 Bash 终端。
+示例：输入 `ask tar` 然后按 2 次 Tab 键，稍侯会显示推荐命令清单，如：
 
-示例：输入 `ask tar` 然后按 Tab 键，稍侯会显示推荐命令清单，如：
+    $ l
+    aa.txt  bbb/
 
-    tar czf archive.tar.gz file1 file2    (描述：压缩文件)
-    tar xf archive.tar.gz                 (描述：解压缩文件)
-    tar czvf archive.tar.gz /path/to/dir   (描述：压缩目录并显示过程)
-
-    --- Press Ctrl+C to get a clean prompt ---
-
-按 Ctrl+C 退出提示即可。
-
-示例：输入 `ask find` 然后按 Tab 键，稍侯会显示 find 的常用示例。
+    $ ask tar c
+    #--- AI prompt ---#
+    tar cf archive.tar aa.txt bbb (Create an uncompressed tar archive)
+    tar cp archive.tar aa.txt (Append files to an existing archive)
+    tar czvf archive.tar.gz aa.txt (Compress all files into a gzip archive)
+    tar tf archive.tar.gz (List contents of a gzip archive)
+    tar xvf archive.tar.gz (Extract files from a gzip archive)
 
 ## 高级用法
 

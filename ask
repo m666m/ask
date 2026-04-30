@@ -3,9 +3,9 @@
 
 set -euo pipefail
 
-# ---------- 配置 ----------
-# 本地变量（向后兼容）
+# ---------- 配置模型及服务地址 ----------
 ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
+# wsl access to a local ollama server, if running on localhost, run `ip route show default | awk '/default/ {print $3}'`
 ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
 # 决定使用本地还是 API，优先连接外部服务
@@ -131,13 +131,15 @@ SYSTEM_CHAT=$(printf '%s\n' "${sys_chat_parts[@]}")
 if [[ "${1:-}" == @* ]]; then
     natural_query="${1#@}"
     shift
+
     [[ $# -gt 0 ]] && natural_query="$natural_query $*"
     natural_query="$(echo "$natural_query" | xargs)"
     if [[ -z "$natural_query" ]]; then
         echo "Usage: ask @ <natural language request>" >&2
         exit 1
     fi
-    # 提供简单的信息：操作系统、当前目录、文件列表（压缩显示）
+
+    # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分）
     os_name=$(uname -s)
     files=$(ls -A | head -20 | tr '\n' ' ')
     user="OS: $os_name, Current dir: $(pwd), files: $files\nRequest: $natural_query"
