@@ -46,7 +46,9 @@ _ask_completion() {
     )
     system=$(printf '%s\n' "${sys_chat_parts[@]}")
 
-    local full_prompt="OS: $(uname -s), pwd: $(pwd), files: $files\nPartial command: $input\nReturn exactly 5 usage examples in the format: command_and_args"
+    local full_prompt
+    full_prompt=$(printf 'OS: %s, pwd: %s, files: %s\nPartial command: %s\nReturn exactly 5 usage examples in the format: command_and_args' \
+    "$(uname -s)" "$(pwd)" "$files" "$input")
 
     # 调用 Ollama API
     local json_data
