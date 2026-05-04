@@ -8,7 +8,7 @@
 
     本地操作系统已经安装了软件包 jq, curl/wget, bash-completion
 
-## 安装方法
+## 安装
 
 1.下载 ask 命令脚本和自动完成脚本到本地的相关目录，并设置权限
 
@@ -18,13 +18,26 @@
 
 2.修改脚本中 MODEL 和 OLLAMA_URL 的值，改为你自己的本地 AI 供应商的值
 
-## 设置 API Key 以使用外部 OpenAI 兼容服务
+### 设置 API Key 以使用外部 OpenAI 兼容服务
 
-ask 默认连接本地 Ollama，无需 API Key。
+ask 默认连接本地 Ollama，无需 API Key。可以设置环境变量，这样就不需要修改 ask 脚本：
 
-若需要使用需要 API Key 的外部服务（如 OpenAI、其他兼容 API），可通过环境变量切换。
+    $ export ASK_MODEL=xxx
+    $ export ASK_OLLAMA_URL=xxx
+    $ ask hi
 
-### 1. 创建配置文件
+若使用需要 API Key 的外部服务（如 OpenAI、其他兼容 API），可以设置环境变量
+
+    $ export ASK_API_KEY=xxx
+    $ export ASK_API_MODEL=xxx
+    $ export ASK_API_URL=xxx
+    $ ask hi
+
+设置环境变量不是必须的，ask 的处理原则是优先使用环境变量，没有也可以运行，顺序依次回落：
+
+    API 相关环境变量 -> 非 API 环境变量 -> 使用 ask 脚本中的默认连接本地 ollama 地址
+
+#### 1. 创建配置文件
 
 建议在 `~/.local/ask/` 下创建 `ask.env`（或其他路径）：
 
@@ -45,7 +58,7 @@ export ASK_API_MODEL="gpt-4o"
 
 ```
 
-### 2. 每次使用前手动加载（推荐，安全）
+#### 2. 每次使用前手动加载（推荐，安全）
 
     $ source ~/.config/ask/ask.env
 
@@ -53,7 +66,7 @@ export ASK_API_MODEL="gpt-4o"
 
     $ [ -f ~/.config/ask/ask.env ] && source ~/.config/ask/ask.env
 
-### 3. 使用
+#### 3. 使用
 
 加载环境变量后，ask 的所有模式（参数模式、交互模式、管道、@ 命令）都会自动使用 API 服务和 Key。
 
@@ -140,3 +153,9 @@ bind C-e new-window "echo 'ask AI in progress...'; { echo 'Please analyze the fo
 ```
 
 2、在 tmux 里，先按先导键 ctrl + b，然后再按 ctrl+e，会捕获当前窗口的内容发送给 ask，新窗口显示 AI 的回答，按回车键关闭该窗口
+
+## 声明
+
+本项目代码是我指导 AI 编写的，思路不断调整，但是我自己没有写任何一行 shell 代码，详见 git log.
+
+我可以独立完成本项目的脚本编写，但是为了节省精力，完全用自然语言指导 AI 完成了 shell 代码。不过，我认真审查了 AI 生成的**每一行**代码，我确信自己理解每行代码的意思。我的审查原则是 AI 编写代码没有偏离主题，没有任意发挥，精确围绕功能点，用最简单最直接的方式实现，详见本程序代码。
