@@ -75,8 +75,9 @@ touch ~/.config/ask/ask.env
 写入以下内容，并替换为你的实际值：
 
 ```bash
-# export ASK_MODEL="llama3.1:8b"
-# export ASK_OLLAMA_URL="http://localhost:11434/v1/chat/completions"
+# 本地 Ollama 设置
+export ASK_MODEL="llama3.1:8b"
+export ASK_OLLAMA_URL="http://localhost:11434/v1/chat/completions"
 # 如果环境变量都存在，则 ASK_API_ 系列生效，优先连接外部服务
 export ASK_API_KEY="sk-your-key-here"
 export ASK_API_URL="https://api.openai.com/v1/chat/completions"

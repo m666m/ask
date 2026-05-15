@@ -52,13 +52,13 @@ cat > "$CONFIG_DIR/ask.env" << 'EOF'
 # 修改以下值以适应你的 AI 服务
 
 # 本地 Ollama 设置
-# ASK_MODEL=llama3.1:8b
-# ASK_OLLAMA_URL=http://localhost:11434/v1/chat/completions
+export ASK_MODEL=llama3.1:8b
+export ASK_OLLAMA_URL=http://localhost:11434/v1/chat/completions
 
 # 外部 OpenAI 兼容 API 设置（优先级高于本地）
-# ASK_API_KEY=your_api_key_here
-# ASK_API_MODEL=gpt-4
-# ASK_API_URL=https://api.openai.com/v1/chat/completions
+# export ASK_API_KEY=your_api_key_here
+# export ASK_API_MODEL=gpt-4
+# export ASK_API_URL=https://api.openai.com/v1/chat/completions
 
 # 取消注释并修改上面的值
 EOF
