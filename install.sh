@@ -20,30 +20,30 @@ mkdir -p "$BIN_DIR"
 mkdir -p "$COMPLETION_DIR"
 mkdir -p "$CONFIG_DIR"
 
+download_file() {
+    local url="$1"
+    local dest="$2"
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$url" -o "$dest"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$url" -O "$dest"
+    else
+        echo "错误: 需要 curl 或 wget" >&2
+        exit 1
+    fi
+}
+
 # 下载 ask 脚本
 echo "下载 ask 脚本..."
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$ASK_URL" -o "$BIN_DIR/ask"
-elif command -v wget >/dev/null 2>&1; then
-    wget -q "$ASK_URL" -O "$BIN_DIR/ask"
-else
-    echo "错误: 需要 curl 或 wget" >&2
-    exit 1
-fi
+download_file "$ASK_URL" "$BIN_DIR/ask"
 
 # 设置执行权限
 chmod 755 "$BIN_DIR/ask"
 
 # 下载自动完成脚本，重命名为 ask_completion
 echo "下载自动完成脚本..."
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$COMPLETION_URL" -o "$COMPLETION_DIR/ask_completion"
-elif command -v wget >/dev/null 2>&1; then
-    wget -q "$COMPLETION_URL" -O "$COMPLETION_DIR/ask_completion"
-else
-    echo "错误: 需要 curl 或 wget" >&2
-    exit 1
-fi
+download_file "$COMPLETION_URL" "$COMPLETION_DIR/ask_completion"
 
 # 生成环境变量文件
 echo "生成环境变量配置文件..."
