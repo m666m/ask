@@ -46,8 +46,11 @@ echo "下载自动完成脚本..."
 download_file "$COMPLETION_URL" "$COMPLETION_DIR/ask"
 
 # 生成环境变量文件
-echo "生成环境变量配置文件..."
-cat > "$CONFIG_DIR/ask.env" << 'EOF'
+if [[ -f "$CONFIG_DIR/ask.env" ]]; then
+    echo "环境变量配置文件已存在，跳过覆盖: $CONFIG_DIR/ask.env"
+else
+    echo "生成环境变量配置文件..."
+    cat > "$CONFIG_DIR/ask.env" << 'EOF'
 # ask 环境变量配置文件
 # 修改以下值以适应你的 AI 服务
 
@@ -62,6 +65,7 @@ export ASK_OLLAMA_URL=http://localhost:11434/v1/chat/completions
 
 # 取消注释并修改上面的值
 EOF
+fi
 
 # 检查 PATH 是否包含 BIN_DIR
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
@@ -71,5 +75,5 @@ fi
 
 echo "安装完成！"
 echo "请编辑 $CONFIG_DIR/ask.env 以设置你的 AI 服务配置。"
-echo "然后运行: source $CONFIG_DIR/ask.env"
+echo "然后运行: source $CONFIG_DIR/ask.env 即可使用，您可以将该语句添加到 ~/.bashrc 以便登录时自动执行."
 echo "测试: ask hi"
