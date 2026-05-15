@@ -1,9 +1,11 @@
 # Bash completion for 'ask' — provides AI‑generated command examples
 # Place this file in /usr/share/bash-completion/completions/ (system-wide) or
-# in ~/.bash_completion.d/ (per-user). It will be sourced automatically.
+# in ~/.local/share/bash-completion/completions/ (per-user). It will be sourced automatically.
 #
 # 调试：
+#   # 终端输入你的命令（例如 ask）后跟一个空格，然后按 Tab 键，这样 bash 才会加载相关自动完成，然后执行下面的 complete 命令
 #   $ complete -p ask
+#
 #   $ COMP_LINE="ask tar" _ask_completion
 #   $ echo "${COMPREPLY[@]}"
 
