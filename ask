@@ -149,7 +149,7 @@ if [[ "${1:-}" == @* ]]; then
 
     cmd=$(ask_nonstream "$SYSTEM_CMD" "$user")
     cmd=$(echo "$cmd" | grep -v '^\s*#' | head -1)
-    printf '%s\n' "$cmd"
+    printf '%s\n %s\n' "#--- AI prompt ---#"  "$cmd"
     exit 0
 fi
 
