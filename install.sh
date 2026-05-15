@@ -41,9 +41,9 @@ download_file "$ASK_URL" "$BIN_DIR/ask"
 # 设置执行权限
 chmod 755 "$BIN_DIR/ask"
 
-# 下载自动完成脚本，重命名为 ask_completion
+# 下载自动完成脚本，重命名为 ask，这样才符合标准：补全脚本的文件名必须与命令名完全一致
 echo "下载自动完成脚本..."
-download_file "$COMPLETION_URL" "$COMPLETION_DIR/ask_completion"
+download_file "$COMPLETION_URL" "$COMPLETION_DIR/ask"
 
 # 生成环境变量文件
 echo "生成环境变量配置文件..."
