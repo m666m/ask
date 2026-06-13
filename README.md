@@ -10,7 +10,7 @@
 
 ## 安装
 
-1、运行智能安装脚本，它会从 GitHub 下载 ask 及其自动完成脚本到用户级目录，并生成环境变量配置文件：
+1、运行智能安装脚本，它会从 GitHub 下载 ask 及其自动完成脚本到用户级目录：
 
     $ curl -fsSL https://github.com/m666m/ask/raw/main/install.sh | bash
 
@@ -77,7 +77,7 @@
     $ ask @ iostat 分析磁盘io及利用率
     iostat -xz 1
 
-注意该用法会获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分）。
+注意：该用法会获取当前环境信息，附加到发送给模型的请求中：操作系统、当前目录及其文件列表（最多10个），这是为了让 AI 给出的建议更贴合你的环境。
 
 ### 管道传送你的问题给 ask
 
@@ -139,16 +139,13 @@ bind C-e new-window "echo 'ask AI in progress...'; { echo 'Please analyze the fo
 
     $ chmod 755 ~/.local/bin/ask
 
-    $ curl -fsSL https://github.com/m666m/ask/raw/main/ask_completion -o ~/.local/share/bash-completion/completions/ask_completion
+    $ curl -fsSL https://github.com/m666m/ask/raw/main/ask_completion -o ~/.local/share/bash-completion/completions/ask
 
 2. 确保 `~/.local/bin` 在 PATH 中，将以下行添加到 `~/.bashrc`：
 
     export PATH="$PATH:~/.local/bin"
 
-3. 创建配置文件，内容见章节 [安装] 中的 `2、设置模型供应商地址和模型名`
-
-    $ mkdir -p ~/.config/ask
-    $ touch ~/.config/ask/ask.env
+3. 配置环境变量即可使用，详见章节 [安装] 中的 `2、设置模型供应商地址和模型名`
 
 ## 声明
 

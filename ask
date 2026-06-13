@@ -144,7 +144,7 @@ if [[ "${1:-}" == @* ]]; then
 
     # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分）
     os_name=$(uname -s)
-    files=$(ls -A | head -20 | tr '\n' ' ')
+    files=$(ls -A | head -10 | tr '\n' ' ')
     user="OS: $os_name, Current dir: $(pwd), files: $files\nRequest: $natural_query"
 
     cmd=$(ask_nonstream "$SYSTEM_CMD" "$user")
