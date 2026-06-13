@@ -4,104 +4,50 @@
 
 ## 前提
 
-    本地运行了大模型如 ollama/LM Studio，或其它 OpenAI 兼容格式的 AI 供应商账户
+    本地运行了大模型如 ollama/LM Studio，或有其它 OpenAI 兼容格式的 AI 供应商账户
 
     本地操作系统已经安装了软件包 jq, curl/wget, bash-completion
 
 ## 安装
 
-### 自动安装（推荐）
-
-运行智能安装脚本，它会从 GitHub 下载 ask 及其自动完成脚本到用户级目录，并生成环境变量配置文件：
+1、运行智能安装脚本，它会从 GitHub 下载 ask 及其自动完成脚本到用户级目录，并生成环境变量配置文件：
 
     $ curl -fsSL https://github.com/m666m/ask/raw/main/install.sh | bash
 
-或者下载后本地运行：
+安装后，ask 默认连接本地 Ollama，使用模型名 llama3.1:8b
 
-    $ wget https://github.com/m666m/ask/raw/main/install.sh
-    $ chmod +x install.sh
-    $ ./install.sh
-
-安装后，请编辑 `~/.config/ask/ask.env` 以设置你的 AI 服务配置，然后运行：
-
-    $ source ~/.config/ask/ask.env
-
-### 手动安装
-
-1. 下载 ask 命令脚本和自动完成脚本到用户级目录，并设置权限
-
-    $ mkdir -p ~/.local/bin ~/.local/share/bash-completion/completions
-    $ curl -fsSL https://github.com/m666m/ask/raw/main/ask -o ~/.local/bin/ask
-    $ chmod 755 ~/.local/bin/ask
-    $ curl -fsSL https://github.com/m666m/ask/raw/main/ask_completion -o ~/.local/share/bash-completion/completions/ask_completion
-
-2. 确保 `~/.local/bin` 在 PATH 中，将以下行添加到 `~/.bashrc` 或 `~/.profile`：
-
-    export PATH="$PATH:~/.local/bin"
-
-3. 创建配置文件，内容见章节 [设置 API Key 以使用外部 OpenAI 兼容服务]
-
-    $ mkdir -p ~/.config/ask
-    $ touch ~/.config/ask/ask.env
-
-### 设置 API Key 以使用外部 OpenAI 兼容服务
-
-ask 默认连接本地 Ollama，无需 API Key。可以设置环境变量，这样就不需要修改 ask 脚本：
-
-    $ export ASK_MODEL=xxx
-    $ export ASK_OLLAMA_URL=xxx
     $ ask hi
 
-若使用需要 API Key 的外部服务（如 OpenAI、其他兼容 API），可以设置环境变量
+2、设置模型供应商地址和模型名
 
-    $ export ASK_API_KEY=xxx
-    $ export ASK_API_MODEL=xxx
-    $ export ASK_API_URL=xxx
+若使用本地供应商如 ollama/LM studio/llama.cpp 等，设置如下变量即可：
+
+    $ export ASK_MODEL=llama3.1:8b
+    $ export ASK_OLLAMA_URL=http://localhost:11434/v1/chat/completions
+
     $ ask hi
 
-设置环境变量不是必须的，ask 的处理原则是优先使用环境变量，没有也可以运行，顺序依次回落：
+若使用需要 API Key 的外部服务（如 OpenAI、其他兼容 API），设置如下变量即可：
 
-    API 相关环境变量 -> 非 API 环境变量 -> 使用 ask 脚本中的默认连接本地 ollama 地址
+    $ export ASK_API_KEY=sk-your-key-here
+    $ export ASK_API_URL=https://api.openai.com/v1/chat/completions
+    $ export ASK_API_MODEL=gpt-4o
 
-#### 1. 创建配置文件
+    $ ask hi
 
-建议在 `~/.config/ask/` 下创建 `ask.env`（或其他路径）：
-
-```bash
-mkdir -p ~/.config/ask
-touch ~/.config/ask/ask.env
-```
-
-写入以下内容，并替换为你的实际值：
-
-```bash
-# 本地 Ollama 设置
-export ASK_MODEL="llama3.1:8b"
-export ASK_OLLAMA_URL="http://localhost:11434/v1/chat/completions"
-# 如果环境变量都存在，则 ASK_API_ 系列生效，优先连接外部服务
-export ASK_API_KEY="sk-your-key-here"
-export ASK_API_URL="https://api.openai.com/v1/chat/completions"
-export ASK_API_MODEL="gpt-4o"
-
-```
-
-#### 2. 每次使用前手动加载（推荐，安全）
-
-    $ source ~/.config/ask/ask.env
-
-或者将其加入 ~/.bashrc 自动加载：
-
-    $ [ -f ~/.config/ask/ask.env ] && source ~/.config/ask/ask.env
-
-#### 3. 使用
-
-加载环境变量后，ask 的所有模式（参数模式、交互模式、管道、@ 命令）都会自动使用 API 服务和 Key。
+如果环境变量都存在，则 ASK_API_* 系列优先生效。
 
 取消或切换回本地 Ollama，只需清除这三个变量：
 
     $ unset ASK_API_KEY ASK_API_URL ASK_API_MODEL
 
 之后 ask 仍照常连接本地服务。
+
+为了方便，可以将环境变量的设置写入 ~/.bashrc，在登录时自动加载。
+
+3、设置环境变量不是必须的，ask 的处理原则是优先使用环境变量，没有也可以运行，顺序依次回落：
+
+    ASK_API_* 环境变量 -> 非 ASK_API_* 的环境变量 -> 使用 ask 脚本默认的连接本地 ollama 中的模型 llama3.1:8b
 
 ## 使用方法
 
@@ -121,9 +67,9 @@ export ASK_API_MODEL="gpt-4o"
 
 ### 自然语言转 shell 命令
 
-适合想不起来命令用法的场景。
+适合想不起来 shell 命令用法的场景。
 
-在 ask 后跟随 @ 符号，然后输入你的问题，会转化成 shell 命令
+在 ask 后跟随 @ 符号，然后输入你的 shell 问题，会转化成 shell 命令
 
     $ ask @ find files larger than 100M and sort by size
     find . -type f -size +100M -exec ls -lh {} \; 2>/dev/null | sort -k5 -h
@@ -183,8 +129,31 @@ bind C-e new-window "echo 'ask AI in progress...'; { echo 'Please analyze the fo
 
 2、在 tmux 里，先按先导键 ctrl + b，然后再按 ctrl+e，会捕获当前窗口的内容发送给 ask，新窗口显示 AI 的回答，按回车键关闭该窗口
 
+### 手动安装
+
+1. 下载 ask 命令脚本和自动完成脚本到用户级目录，并设置权限
+
+    $ mkdir -p ~/.local/bin ~/.local/share/bash-completion/completions
+
+    $ curl -fsSL https://github.com/m666m/ask/raw/main/ask -o ~/.local/bin/ask
+
+    $ chmod 755 ~/.local/bin/ask
+
+    $ curl -fsSL https://github.com/m666m/ask/raw/main/ask_completion -o ~/.local/share/bash-completion/completions/ask_completion
+
+2. 确保 `~/.local/bin` 在 PATH 中，将以下行添加到 `~/.bashrc`：
+
+    export PATH="$PATH:~/.local/bin"
+
+3. 创建配置文件，内容见章节 [安装] 中的 `2、设置模型供应商地址和模型名`
+
+    $ mkdir -p ~/.config/ask
+    $ touch ~/.config/ask/ask.env
+
 ## 声明
 
-本项目代码是我指导 AI 编写的，思路不断调整，但是我自己没有写任何一行 shell 代码，详见 git log.
+本项目代码是我指导 AI 编写的，思路不断调整，但是我自己没有写任何一行 shell 代码，详见 git log。
 
-我可以独立完成本项目的脚本编写，但是为了节省精力，完全用自然语言指导 AI 完成了 shell 代码。不过，我认真审查了 AI 生成的**每一行**代码，我确信自己理解每行代码的意思。我的审查原则是 AI 编写代码没有偏离主题，没有任意发挥，精确围绕功能点，用最简单最直接的方式实现，详见本程序代码。
+我可以独立完成本项目的脚本编写，但是为了节省精力，完全用自然语言指导 AI 完成了 shell 代码。
+
+不过，我认真审查了 AI 生成的**每一行**代码，我确信自己理解每行代码的意思。我的审查原则是 AI 编写代码没有偏离主题，没有任意发挥，精确围绕功能点，用最简单最直接的方式实现。
