@@ -47,7 +47,9 @@ ask_nonstream() {
                 {role: "system", content: $sys},
                 {role: "user", content: $usr}
             ],
-            stream: false
+            stream: false,
+            options: {think: false},
+            chat_template_kwargs: {enable_thinking: false}
         }')
 
     if command -v curl &>/dev/null; then
@@ -80,7 +82,9 @@ ask_stream() {
                 {role: "system", content: $sys},
                 {role: "user", content: $usr}
             ],
-            stream: true
+            stream: true,
+            options: {think: false},
+            chat_template_kwargs: {enable_thinking: false}
         }')
 
     if command -v curl &>/dev/null; then
@@ -98,11 +102,9 @@ ask_stream() {
         if [[ "$line" == data:* ]]; then
             json_part="${line#data: }"
             [[ "$json_part" == "[DONE]" ]] && continue
-            # 原版本：content=$(echo "$json_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null || true)
-            # 新版本：使用 jq -j 末尾添加 NUL 哨兵，并通过 read -d '' 读取以保留尾部换行
-            while IFS= read -r -d '' content; do
-                [[ -n "$content" ]] && printf "%s" "$content"
-            done < <(echo "$json_part" | jq -j '.choices[0].delta.content // empty, "\u0000"' 2>/dev/null || true)
+            content=$(echo "$json_part" | jq -j '.choices[0].delta.content // empty' 2>/dev/null || true; printf '¶')
+            content=${content%¶}
+            [[ -n "$content" ]] && printf "%s" "$content"
         fi
     done
     echo

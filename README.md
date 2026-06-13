@@ -1,16 +1,16 @@
 # ask
 
-命令行 AI 助手 — 提问、把你说的话转成 Shell 命令、自动推荐命令补全、分析日志。轻量、纯 Shell 实现，支持本地 Ollama 或任意 OpenAI 兼容 API。
+命令行 AI 助手 — 提问、把你说的话转成 Shell 命令、自动推荐命令补全、分析日志。轻量、纯 Shell 实现，支持本地运行大模型的后端如 ollama/LM Studio/llama.cpp，或具备互联网上提供 OpenAI 兼容格式的 AI 供应商账户。
 
 ## 前提
 
-    本地运行了大模型如 ollama/LM Studio，或有其它 OpenAI 兼容格式的 AI 供应商账户
+    本地运行了大模型的后端，如 ollama/LM Studio/llama.cpp，或具备互联网上提供 OpenAI 兼容格式的 AI 供应商账户
 
     本地操作系统已经安装了软件包 jq, curl/wget, bash-completion
 
 ## 安装
 
-1、运行智能安装脚本，它会从 GitHub 下载 ask 及其自动完成脚本到用户级目录：
+1、运行智能安装脚本，它会从 GitHub 下载 ask 及其自动完成脚本，安装到用户级目录：
 
     $ curl -fsSL https://github.com/m666m/ask/raw/main/install.sh | bash
 
@@ -20,7 +20,7 @@
 
 2、设置模型供应商地址和模型名
 
-若使用本地供应商如 ollama/LM studio/llama.cpp 等，设置如下变量即可：
+若使用本地供应商（可以提供 OpenAI 兼容格式的访问）如 ollama/LM studio/llama.cpp 等，设置如下变量即可：
 
     $ export ASK_MODEL=llama3.1:8b
     $ export ASK_OLLAMA_URL=http://localhost:11434/v1/chat/completions
@@ -35,19 +35,19 @@
 
     $ ask hi
 
-如果环境变量都存在，则 ASK_API_* 系列优先生效。
+如果以上环境变量都存在，则 ASK_API_* 系列优先生效。
 
 取消或切换回本地 Ollama，只需清除这三个变量：
 
     $ unset ASK_API_KEY ASK_API_URL ASK_API_MODEL
 
-之后 ask 仍照常连接本地服务。
+之后 ask 仍照常连接本地供应商。
 
-为了方便，可以将环境变量的设置写入 ~/.bashrc，在登录时自动加载。
+为了方便，可以自行将环境变量的设置写入 ~/.bashrc，在登录时即自动加载。
 
 3、设置环境变量不是必须的，ask 的处理原则是优先使用环境变量，没有也可以运行，顺序依次回落：
 
-    ASK_API_* 环境变量 -> 非 ASK_API_* 的环境变量 -> 使用 ask 脚本默认的连接本地 ollama 中的模型 llama3.1:8b
+    ASK_API_* 环境变量 -> 非 ASK_API_* 的环境变量 -> 使用 ask 脚本默认的连接本地 ollama 模型 llama3.1:8b
 
 ## 使用方法
 
@@ -57,7 +57,7 @@
 
 ### 交互模式，输入多行内容提问
 
-适合复制命令的错误输出，粘贴给 AI 进行分析的场景
+适合调试程序，复制错误日志的输出，粘贴到 ask 让 AI 进行分析
 
     $ ask
     Enter or paste your question (press Ctrl+D when done):
@@ -69,15 +69,19 @@
 
 适合想不起来 shell 命令用法的场景。
 
-在 ask 后跟随 @ 符号，然后输入你的 shell 问题，会转化成 shell 命令
+在 ask 后跟随 @ 符号，然后输入你的 shell 问题，会回答推荐的 shell 命令
 
     $ ask @ find files larger than 100M and sort by size
-    find . -type f -size +100M -exec ls -lh {} \; 2>/dev/null | sort -k5 -h
+    #--- AI prompt ---#
+    find . -type f -size +100M -exec ls -lh {} + | sort -rh -k5
 
     $ ask @ iostat 分析磁盘io及利用率
-    iostat -xz 1
+    #--- AI prompt ---#
+    iostat -x 1
 
-注意：该用法会获取当前环境信息，附加到发送给模型的请求中：操作系统、当前目录及其文件列表（最多10个），这是为了让 AI 给出的建议更贴合你的环境。
+注意：
+
+    该用法会获取当前环境信息，附加到发送给模型的请求中，包含操作系统、当前目录及其文件列表（最多10个），这是为了让 AI 给出的建议更贴合你的环境。
 
 ### 管道传送你的问题给 ask
 
