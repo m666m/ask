@@ -65,7 +65,9 @@ _ask_completion() {
                 {role: "system", content: $sys},
                 {role: "user", content: $usr}
             ],
-            stream: false
+            stream: false,
+            options: {think: false},
+            chat_template_kwargs: {enable_thinking: false}
         }')
 
     local output
