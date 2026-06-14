@@ -20,21 +20,33 @@ _ask_completion() {
     ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
     ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
-    # 决定使用本地还是 API，优先连接外部服务
-    if [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+    local ask_mode
+
+    # ---------- 后端选择 ----------
+    # 决定工作方式: ASK_CLI（管道到客户端） > 外部API（直连） > 本地Ollama（直连）
+    if [[ -n "${ASK_CLI:-}" ]]; then
+        ask_mode="cli"
+    elif [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+        ask_mode="direct"
         ai_model="$ASK_API_MODEL"
         ai_url="$ASK_API_URL"
     else
+        ask_mode="direct"
         ai_model="$ASK_MODEL"
         ai_url="$ASK_OLLAMA_URL"
     fi
 
-    command -v jq &>/dev/null || return
-    command -v curl &>/dev/null || return
+    # 预检：CLI 模式只需检查 CLI 工具，direct 模式需检查 jq + curl
+    if [[ "$ask_mode" == "cli" ]]; then
+        command -v "${ASK_CLI}" &>/dev/null || return
+    else
+        command -v jq &>/dev/null || return
+        command -v curl &>/dev/null || return
+    fi
 
     # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分），自适应当前语言
     local files
-    files=$(ls -A 2>/dev/null | head -20 | tr '\n' ' ')
+    files=$(ls -A 2>/dev/null | head -10 | tr '\n' ' ')
 
     local sys_chat_parts system
     sys_chat_parts=(
@@ -51,32 +63,56 @@ _ask_completion() {
 
     local full_prompt
     full_prompt=$(printf 'OS: %s, pwd: %s, files: %s\nPartial command: %s\nReturn exactly 5 usage examples in the format: command_and_args' \
-    "$(uname -s)" "$(pwd)" "$files" "$input")
+    "$(uname -a)" "$(pwd)" "$files" "$input")
 
-    # 调用 Ollama API
-    local json_data
-    json_data=$(jq -n \
-        --arg model "$ai_model" \
-        --arg sys "$system" \
-        --arg usr "$full_prompt" \
-        '{
-            model: $model,
-            messages: [
-                {role: "system", content: $sys},
-                {role: "user", content: $usr}
-            ],
-            stream: false,
-            options: {think: false},
-            chat_template_kwargs: {enable_thinking: false}
-        }')
-
+    # ---------- 调用 AI ----------
     local output
-    output=$(printf '%s' "$json_data" | \
-        curl -s --connect-timeout 3 --max-time 8 -X POST "$ai_url" \
-        -H "Content-Type: application/json" \
-        ${ASK_API_KEY:+-H "Authorization: Bearer $ASK_API_KEY"} \
-        -d @- 2>/dev/null | \
-        jq -r '.choices[0].message.content // empty' 2>/dev/null)
+
+    if [[ "$ask_mode" == "cli" ]]; then
+        # CLI 模式：拼接 system + user 提示词，管道发送到 CLI 工具
+        local combined
+        combined=$(printf '%s\n\n%s' "$system" "$full_prompt")
+
+        # 根据 ASK_CLI 值分发到不同的客户端工具
+        case "$(printf '%s' "$ASK_CLI" | tr '[:upper:]' '[:lower:]')" in
+            claude)
+                output=$(printf '%s' "$combined" | claude -p 2>/dev/null)
+                ;;
+            codex)
+                output=$(printf '%s' "$combined" | codex -p 2>/dev/null)
+                ;;
+            openai)
+                output=$(printf '%s' "$combined" | openai chat --stdin 2>/dev/null)
+                ;;
+            openclaw)
+                output=$(printf '%s' "$combined" | openclaw 2>/dev/null)
+                ;;
+        esac
+    else
+        # Direct 模式：构造 JSON 并通过 HTTP POST 发送到模型服务器
+        local json_data
+        json_data=$(jq -n \
+            --arg model "$ai_model" \
+            --arg sys "$system" \
+            --arg usr "$full_prompt" \
+            '{
+                model: $model,
+                messages: [
+                    {role: "system", content: $sys},
+                    {role: "user", content: $usr}
+                ],
+                stream: false,
+                options: {think: false},
+                chat_template_kwargs: {enable_thinking: false}
+            }')
+
+        output=$(printf '%s' "$json_data" | \
+            curl -s --connect-timeout 3 --max-time 8 -X POST "$ai_url" \
+            -H "Content-Type: application/json" \
+            ${ASK_API_KEY:+-H "Authorization: Bearer $ASK_API_KEY"} \
+            -d @- 2>/dev/null | \
+            jq -r '.choices[0].message.content // empty' 2>/dev/null)
+    fi
 
     [[ -z "$output" ]] && return
 

@@ -8,24 +8,54 @@ ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
 # wsl access to a local ollama server, if running on localhost, run `ip route show default | awk '/default/ {print $3}'`
 ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
 
-# 决定使用本地还是 API，优先连接外部服务
-if [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+# 决定工作方式: ASK_CLI（管道到客户端） > 外部API（直连） > 本地Ollama（直连）
+if [[ -n "${ASK_CLI:-}" ]]; then
+    ask_mode="cli"
+elif [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+    ask_mode="direct"
     ai_model="$ASK_API_MODEL"
     ai_url="$ASK_API_URL"
 else
+    ask_mode="direct"
     ai_model="$ASK_MODEL"
     ai_url="$ASK_OLLAMA_URL"
 fi
 
 # ---------- 预检 ----------
-if ! command -v jq &>/dev/null; then
-    echo "Error: jq not found" >&2
-    exit 1
+if [[ "$ask_mode" == "cli" ]]; then
+    if ! command -v "${ASK_CLI}" &>/dev/null; then
+        echo "Error: ASK_CLI tool '${ASK_CLI}' not found in PATH" >&2
+        exit 1
+    fi
+else
+    if ! command -v jq &>/dev/null; then
+        echo "Error: jq not found" >&2
+        exit 1
+    fi
+    if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+        echo "Error: curl or wget not found" >&2
+        exit 1
+    fi
 fi
-if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
-    echo "Error: curl or wget not found" >&2
-    exit 1
-fi
+
+# ---------- 通用提示词 ----------
+
+# 用于 @ 模式的系统提示词（要求只返回 shell 命令）
+sys_cmd_parts=(
+    'You are a translator from natural language to a single shell command.'
+    'Return ONLY the exact command, no explanation, no markdown, no code fences, no backticks.'
+    'If there are multiple possible commands, choose the most common and safe one.'
+    'Keep the command practical and ready to execute in the given OS and directory context.'
+)
+SYSTEM_CMD=$(printf '%s\n' "${sys_cmd_parts[@]}")
+
+# 用于普通对话的系统提示词（无 markdown，适合终端，自适应语言）
+sys_chat_parts=(
+    'You are a helpful terminal assistant. Answer concisely.'
+    "Respond in the language indicated by the user's LANG environment variable."
+    'Avoid markdown.'
+)
+SYSTEM_CHAT=$(printf '%s\n' "${sys_chat_parts[@]}")
 
 # ---------- 工具函数 ----------
 
@@ -110,24 +140,32 @@ ask_stream() {
     echo
 }
 
-# ---------- 通用提示词 ----------
+# CLI 工具管道请求：将 system + user 拼接后管道发送到 ASK_CLI 指定的工具
+ask_cmd() {
+    local system="$1"
+    local user="$2"
+    local combined
+    combined=$(printf '%s\n\n%s' "$system" "$user")
 
-# 用于 @ 模式的系统提示词（要求只返回 shell 命令）
-sys_cmd_parts=(
-    'You are a translator from natural language to a single shell command.'
-    'Return ONLY the exact command, no explanation, no markdown, no code fences, no backticks.'
-    'If there are multiple possible commands, choose the most common and safe one.'
-    'Keep the command practical and ready to execute in the given OS and directory context.'
-)
-SYSTEM_CMD=$(printf '%s\n' "${sys_cmd_parts[@]}")
-
-# 用于普通对话的系统提示词（无 markdown，适合终端，自适应语言）
-sys_chat_parts=(
-    'You are a helpful terminal assistant. Answer concisely.'
-    "Respond in the language indicated by the user's LANG environment variable."
-    'Avoid markdown.'
-)
-SYSTEM_CHAT=$(printf '%s\n' "${sys_chat_parts[@]}")
+    case "$(printf '%s' "$ASK_CLI" | tr '[:upper:]' '[:lower:]')" in
+        claude)
+            printf '%s' "$combined" | claude -p
+            ;;
+        codex)
+            printf '%s' "$combined" | codex -p
+            ;;
+        openai)
+            printf '%s' "$combined" | openai chat --stdin
+            ;;
+        openclaw)
+            printf '%s' "$combined" | openclaw
+            ;;
+        *)
+            echo "Error: unsupported ASK_CLI value '${ASK_CLI}'. Supported: claude, codex, openai, openclaw" >&2
+            exit 1
+            ;;
+    esac
+}
 
 # ---------- 模式分支 ----------
 
@@ -144,12 +182,15 @@ if [[ "${1:-}" == @* ]]; then
         exit 1
     fi
 
-    # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分）
-    os_name=$(uname -s)
+    # 获取当前环境信息附加到发送给模型的请求中：系统信息、当前目录、文件列表（少部分）
     files=$(ls -A | head -10 | tr '\n' ' ')
-    user="OS: $os_name, Current dir: $(pwd), files: $files\nRequest: $natural_query"
+    user="OS: $(uname -a), Current dir: $(pwd), files: $files\nRequest: $natural_query"
 
-    cmd=$(ask_nonstream "$SYSTEM_CMD" "$user")
+    if [[ "$ask_mode" == "cli" ]]; then
+        cmd=$(ask_cmd "$SYSTEM_CMD" "$user")
+    else
+        cmd=$(ask_nonstream "$SYSTEM_CMD" "$user")
+    fi
     cmd=$(echo "$cmd" | grep -v '^\s*#' | head -1)
     printf '%s\n%s\n' "#--- AI prompt ---#"  "$cmd"
     exit 0
@@ -160,7 +201,11 @@ if [[ $# -gt 0 ]]; then
     query="$*"
     query=$(printf 'LANG: %s\n%s' "${LANG:-en}" "$query")
 
-    ask_stream "$SYSTEM_CHAT" "$query"
+    if [[ "$ask_mode" == "cli" ]]; then
+        ask_cmd "$SYSTEM_CHAT" "$query"
+    else
+        ask_stream "$SYSTEM_CHAT" "$query"
+    fi
     exit 0
 fi
 
@@ -175,11 +220,19 @@ if [[ -t 0 ]]; then
     fi
 
     USER_PROMPT=$(printf 'LANG: %s\n%s' "${LANG:-en}" "$USER_PROMPT")
-    ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"
+    if [[ "$ask_mode" == "cli" ]]; then
+        ask_cmd "$SYSTEM_CHAT" "$USER_PROMPT"
+    else
+        ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"
+    fi
     exit 0
 fi
 
 # 4. 管道模式：从 stdin 读取，流式对话
 USER_PROMPT=$(cat)
 USER_PROMPT=$(printf 'LANG: %s\n%s' "${LANG:-en}" "$USER_PROMPT")
-ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"
+if [[ "$ask_mode" == "cli" ]]; then
+    ask_cmd "$SYSTEM_CHAT" "$USER_PROMPT"
+else
+    ask_stream "$SYSTEM_CHAT" "$USER_PROMPT"
+fi
