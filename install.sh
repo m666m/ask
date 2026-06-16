@@ -7,16 +7,19 @@ set -euo pipefail
 # 用户级目录
 BIN_DIR="${HOME}/.local/bin"
 COMPLETION_DIR="${HOME}/.local/share/bash-completion/completions"
+ZSH_COMPLETION_DIR="${HOME}/.local/share/zsh/site-functions"
 
 # GitHub 原始文件 URL
 ASK_URL="https://github.com/m666m/ask/raw/main/ask"
 COMPLETION_URL="https://github.com/m666m/ask/raw/main/ask_completion"
+ZSH_COMPLETION_URL="https://github.com/m666m/ask/raw/main/_ask"
 
 echo "开始安装 ask AI 助手..."
 
 # 创建目录
 mkdir -p "$BIN_DIR"
 mkdir -p "$COMPLETION_DIR"
+mkdir -p "$ZSH_COMPLETION_DIR"
 
 # curlgh - 从 GitHub 下载文件，支持多种 URL 格式，直连失败自动降级到 jsDelivr CDN
 curlgh() {
@@ -104,11 +107,26 @@ if ! curlgh "$COMPLETION_URL" > "$COMPLETION_DIR/ask"; then
     exit 1
 fi
 
+# 下载 zsh 自动完成脚本
+echo "下载 zsh 自动完成脚本..."
+if ! curlgh "$ZSH_COMPLETION_URL" > "$ZSH_COMPLETION_DIR/_ask"; then
+    rm -f "$ZSH_COMPLETION_DIR/_ask"
+    echo "错误: zsh 自动完成脚本安装失败，请检查网络后重试" >&2
+    exit 1
+fi
+
 # 检查 PATH 是否包含 BIN_DIR
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    echo "警告: $BIN_DIR 不在 PATH 中。请将以下行添加到你的 ~/.bashrc:"
-    echo "  export PATH=\"\$PATH:$BIN_DIR\""
-    echo "  source ~/.bashrc"
+    echo "警告: $BIN_DIR 不在 PATH 中。请将以下行添加到你使用的 shell 配置文件:"
+    echo "  bash: echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> ~/.bashrc"
+    [[ -f "${HOME}/.zshrc" ]]  && echo "  zsh:  echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> ~/.zshrc"
+fi
+
+# 如果用户使用 zsh，提示配置 fpath 以启用命令补全
+if [[ -f "${HOME}/.zshrc" ]]; then
+    echo "注意: 为启用 zsh 命令补全，请将以下行添加到 ~/.zshrc:"
+    echo "  fpath=(\"$ZSH_COMPLETION_DIR\" \$fpath)"
+    echo "  autoload -Uz compinit && compinit"
 fi
 
 echo "安装完成！"

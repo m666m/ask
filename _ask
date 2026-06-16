@@ -1,0 +1,137 @@
+#compdef ask
+# shellcheck disable=SC2148,SC2154,SC2296,SC2155  # zsh completion: sourced not executed, words is builtin, (@f) is zsh syntax
+
+# Zsh completion for 'ask' — provides AI-generated command examples
+# Place this file in a directory in your $fpath, e.g.:
+#   ~/.local/share/zsh/site-functions/_ask
+#
+# 调试：
+#   $ echo $fpath
+#   $ rm -f ~/.zcompdump ~/.config/zsh/.zcompdump; compinit
+#   $ COMP_LINE="ask tar" _ask_completion
+#   $ echo "${COMPREPLY[@]}"
+
+_ask() {
+    local input="${words[2,-1]}"
+    [[ -z "$input" ]] && return 1
+
+    local ai_model ai_url
+
+    # 配置模型及服务地址
+    local ASK_MODEL="${ASK_MODEL:-llama3.1:8b}"
+    local ASK_OLLAMA_URL="${ASK_OLLAMA_URL:-http://localhost:11434/v1/chat/completions}"
+
+    local ask_mode
+
+    # ---------- 后端选择 ----------
+    # 决定工作方式: ASK_CLI（管道到客户端） > 外部API（直连） > 本地Ollama（直连）
+    if [[ -n "${ASK_CLI:-}" ]]; then
+        ask_mode="cli"
+    elif [[ -n "${ASK_API_KEY:-}" && -n "${ASK_API_URL:-}" && -n "${ASK_API_MODEL:-}" ]]; then
+        ask_mode="direct"
+        ai_model="$ASK_API_MODEL"
+        ai_url="$ASK_API_URL"
+    else
+        ask_mode="direct"
+        ai_model="$ASK_MODEL"
+        ai_url="$ASK_OLLAMA_URL"
+    fi
+
+    # 预检：CLI 模式只需检查 CLI 工具，direct 模式需检查 jq + curl
+    if [[ "$ask_mode" == "cli" ]]; then
+        command -v "${ASK_CLI}" &>/dev/null || return 1
+    else
+        command -v jq &>/dev/null || return 1
+        command -v curl &>/dev/null || return 1
+    fi
+
+    # 获取当前环境信息附加到发送给模型的请求中：操作系统、当前目录、文件列表（少部分），自适应当前语言
+    local files
+    files=$(ls -A 2>/dev/null | head -10 | tr '\n' ' ')
+
+    local sys_chat_parts=(
+        "You are a shell command example generator."
+        "Return exactly 5 common usage examples of the given command."
+        "Each example on its own line."
+        "Format each line exactly as: command_and_args (brief description in ${LANG:-en} language)."
+        "Keep the description under 40 characters."
+        "Do NOT use markdown, code blocks, bullet points, or numbered lists."
+        "Do NOT add any text before or after the list."
+        "Each line must be a single complete line without line breaks."
+    )
+    local system=$(printf '%s\n' "${sys_chat_parts[@]}")
+
+    local full_prompt
+    full_prompt=$(printf 'OS: %s, pwd: %s, files: %s\nPartial command: %s\nReturn exactly 5 usage examples in the format: command_and_args' \
+        "$(uname -a)" "$(pwd)" "$files" "$input")
+
+    # ---------- 调用 AI ----------
+    local output
+
+    if [[ "$ask_mode" == "cli" ]]; then
+        # CLI 模式：拼接 system + user 提示词，管道发送到 CLI 工具
+        local combined
+        combined=$(printf '%s\n\n%s' "$system" "$full_prompt")
+
+        # 根据 ASK_CLI 值分发到不同的客户端工具
+        case "$(printf '%s' "$ASK_CLI" | tr '[:upper:]' '[:lower:]')" in
+            claude)
+                output=$(printf '%s' "$combined" | claude -p 2>/dev/null)
+                ;;
+            codex)
+                output=$(printf '%s' "$combined" | codex -p 2>/dev/null)
+                ;;
+            openai)
+                output=$(printf '%s' "$combined" | openai chat --stdin 2>/dev/null)
+                ;;
+            openclaw)
+                output=$(printf '%s' "$combined" | openclaw 2>/dev/null)
+                ;;
+        esac
+    else
+        # Direct 模式：构造 JSON 并通过 HTTP POST 发送到模型服务器
+        local json_data
+        json_data=$(jq -n \
+            --arg model "$ai_model" \
+            --arg sys "$system" \
+            --arg usr "$full_prompt" \
+            '{
+                model: $model,
+                messages: [
+                    {role: "system", content: $sys},
+                    {role: "user", content: $usr}
+                ],
+                stream: false,
+                options: {think: false},
+                chat_template_kwargs: {enable_thinking: false}
+            }')
+
+        output=$(printf '%s' "$json_data" | \
+            curl -s --connect-timeout 3 --max-time 8 -X POST "$ai_url" \
+            -H "Content-Type: application/json" \
+            ${ASK_API_KEY:+-H "Authorization: Bearer $ASK_API_KEY"} \
+            -d @- 2>/dev/null | \
+            jq -r '.choices[0].message.content // empty' 2>/dev/null)
+    fi
+
+    [[ -z "$output" ]] && return 1
+
+    # 按换行符拆分成数组（zsh 风格）
+    local -a suggestions
+    suggestions=("${(@f)output}")
+
+    # 过滤空行
+    local -a filtered
+    local line
+    for line in "${suggestions[@]}"; do
+        [[ -n "$line" ]] && filtered+=("$line")
+    done
+
+    # 向 zsh 补全系统注册候选项
+    # -U: 不按当前词做前缀匹配，所有 AI 建议都展示
+    # -Q: 不对特殊字符（空格、括号等）做反斜杠转义显示
+    compstate[insert]=''  # 禁止 zsh 公共前缀自动填充
+    compadd -U -Q -X '#--- AI prompt ---#' -a filtered
+}
+
+_ask "$@"
