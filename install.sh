@@ -21,76 +21,12 @@ mkdir -p "$BIN_DIR"
 mkdir -p "$COMPLETION_DIR"
 mkdir -p "$ZSH_COMPLETION_DIR"
 
-# curlgh - 从 GitHub 下载文件，支持多种 URL 格式，直连失败自动降级到 jsDelivr CDN
-curlgh() {
-    if [ $# -eq 0 ]; then
-        echo "获取 github 文件，下载超时则自动更换 CDN 下载：" >&2
-        echo "  curlgh https://github.com/m666m/ask/blob/main/install.sh" >&2
-        echo "  curlgh https://github.com/m666m/ask/raw/refs/heads/main/install.sh" >&2
-        echo "  curlgh https://raw.githubusercontent.com/m666m/ask/main/install.sh" >&2
-        return 1
-    fi
-
-    local url="$1"
-    local raw_url=""
-
-    # NOTE: 调用可能不存在的命令，必须先 `command -v` 判断一下，否则不存在的命令Fedora会搜索软件仓库导致卡顿
-    if ! command -v curl >/dev/null 2>&1; then
-        echo "  Error: Cant find curl!" >&2
-        return 1
-    fi
-
-    # ---------- 第一步：统一转换为 raw.githubusercontent.com 地址 ----------
-    if [[ "$url" == *"raw.githubusercontent.com"* ]]; then
-        # 已经是原始文件地址
-        raw_url="$url"
-    elif [[ "$url" == *"github.com"* ]]; then
-        # 处理页面浏览地址，例如 https://github.com/m666m/ask/blob/main/install.sh
-        # 转换为原始文件地址   https://raw.githubusercontent.com/m666m/ask/main/install.sh
-        if [[ "$url" == *"/blob/"* ]]; then
-            raw_url=$(echo "$url" | sed 's#https://github.com/#https://raw.githubusercontent.com/#; s#/blob/#/#')
-
-        # 处理 /raw/ 格式的浏览地址，自动去除 /refs/heads/ 和 /refs/tags/ 部分
-        # https://github.com/m666m/ask/raw/refs/heads/main/install.sh
-        #   → https://raw.githubusercontent.com/m666m/ask/main/install.sh
-        elif [[ "$url" == *"/raw/"* ]]; then
-            raw_url=$(echo "$url" | sed -E 's#https://github.com/([^/]+)/([^/]+)/raw/(refs/(heads|tags)/)?([^/]+)/(.*)#https://raw.githubusercontent.com/\1/\2/\5/\6#')
-        else
-            echo "[curlgh] 不支持的 GitHub 链接格式: $url" >&2
-            return 1
-        fi
-    else
-        # 非 GitHub 链接，直接报错
-        echo "[curlgh] 不支持的非 GitHub 链接: $url" >&2
-        return 1
-    fi
-
-    # ---------- 第二步：优先从原始地址下载 ----------
-    if curl -fsSL --connect-timeout 5 --max-time 30 "$raw_url"; then
-        return 0
-    fi
-
-    # ---------- 第三步：原始地址下载失败，则尝试 jsDelivr CDN 地址 ----------
-    # https://raw.githubusercontent.com/m666m/ask/main/install.sh
-    #   ↓
-    # https://cdn.jsdelivr.net/gh/m666m/ask@main/install.sh
-    local cdn_url
-    # shellcheck disable=SC2001  # 需要正则回引号重组 URL，不能用 ${//}
-    cdn_url=$(echo "$raw_url" | sed 's|https://raw.githubusercontent.com/\([^/]*\)/\([^/]*\)/\([^/]*\)/\(.*\)|https://cdn.jsdelivr.net/gh/\1/\2@\3/\4|')
-
-    echo "[curlgh] 原始地址下载失败，尝试 CDN 地址: $cdn_url" >&2
-
-    if curl -fsSL --connect-timeout 10 --max-time 60 "$cdn_url"; then
-        return 0
-    else
-        echo "[curlgh] CDN 下载也失败了，请重试！" >&2
-        return 1
-    fi
-}
+# 下载工具：可通过 ASK_INSTALL_CURL 环境变量自定义（如传入自定义函数名或 curl 参数）
+CURL="${ASK_INSTALL_CURL:-curl -fsSL}"
 
 # 下载 ask 脚本
 echo "下载 ask 脚本..."
-if ! curlgh "$ASK_URL" > "$BIN_DIR/ask"; then
+if ! $CURL "$ASK_URL" > "$BIN_DIR/ask"; then
     rm -f "$BIN_DIR/ask"
     echo "错误: ask 安装失败，请检查网络后重试" >&2
     exit 1
@@ -101,7 +37,7 @@ chmod 755 "$BIN_DIR/ask"
 
 # 下载自动完成脚本，重命名为 ask，这样才符合标准：补全脚本的文件名必须与命令名完全一致
 echo "下载自动完成脚本..."
-if ! curlgh "$COMPLETION_URL" > "$COMPLETION_DIR/ask"; then
+if ! $CURL "$COMPLETION_URL" > "$COMPLETION_DIR/ask"; then
     rm -f "$COMPLETION_DIR/ask"
     echo "错误: 自动完成脚本安装失败，请检查网络后重试" >&2
     exit 1
@@ -109,7 +45,7 @@ fi
 
 # 下载 zsh 自动完成脚本
 echo "下载 zsh 自动完成脚本..."
-if ! curlgh "$ZSH_COMPLETION_URL" > "$ZSH_COMPLETION_DIR/_ask"; then
+if ! $CURL "$ZSH_COMPLETION_URL" > "$ZSH_COMPLETION_DIR/_ask"; then
     rm -f "$ZSH_COMPLETION_DIR/_ask"
     echo "错误: zsh 自动完成脚本安装失败，请检查网络后重试" >&2
     exit 1
