@@ -32,6 +32,12 @@ bash-completion（bash）或 zsh（自带补全系统）为可选依赖，安装
 
     $ ask hi
 
+PS. 如有自定义下载函数，先 export -f 导出函数，再通过 ASK_INSTALL_CURL 传入：
+
+    $ curlgh(){ curl -fsSL -x socks5://127.0.0.1:1080 "$@"; }
+    $ export -f curlgh
+    $ ASK_INSTALL_CURL=curlgh curlgh https://github.com/m666m/ask/raw/main/install.sh | bash
+
 2、后端配置（三选一）
 
 只需要配置环境变量，即可连接到指定的后端。
