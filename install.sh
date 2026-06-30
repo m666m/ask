@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# ask 智能安装脚本
-# 从 GitHub 下载 ask 及其自动完成脚本，安装到用户级目录
+# ask 智能安装脚本，从 GitHub 下载 ask 及其自动完成脚本，安装到用户级目录
 
 set -euo pipefail
 

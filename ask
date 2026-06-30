@@ -1,5 +1,4 @@
-#!/bin/bash
-# ask - AI 助手，支持管道输入与自然语言翻译为shell命令
+#!/usr/bin/env bash
 
 set -euo pipefail
 
