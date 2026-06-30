@@ -1,15 +1,14 @@
-#compdef ask
 # shellcheck disable=SC2148,SC2154,SC2296,SC2155  # zsh completion: sourced not executed, words is builtin, (@f) is zsh syntax
-
+#
 # Zsh completion for 'ask' — provides AI-generated command examples
 # Place this file in a directory in your $fpath, e.g.:
 #   ~/.local/share/zsh/site-functions/_ask
 #
 # 调试：
-#   $ echo $fpath
-#   $ rm -f ~/.zcompdump ~/.config/zsh/.zcompdump; compinit
-#   $ COMP_LINE="ask tar" _ask_completion
-#   $ echo "${COMPREPLY[@]}"
+#   % echo $fpath
+#   % rm -f ~/.zcompdump ~/.config/zsh/.zcompdump; compinit
+#   % compdef _ask ask
+#   % ask tar
 
 _ask() {
     local input="${words[2,-1]}"
